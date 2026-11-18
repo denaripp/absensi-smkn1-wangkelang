@@ -6,7 +6,7 @@
 
 **Architecture:** Render server-first. Semua tulis ke DB lewat route handler dengan `SUPABASE_SERVICE_ROLE_KEY`; browser hanya baca dan dibatasi RLS. Autentikasi pakai Supabase Auth (`users.id` = FK `auth.users`), jadi RLS dan Realtime bisa pakai `auth.uid()`. Token QR = HMAC stateless (`sessionId.bucket.sig`, bucket 15 detik), tidak ada tulisan DB tiap rotasi. Guard role di `src/proxy.ts` (bukan layout). Realtime memakai Postgres Changes pada tabel `sessions` dan `attendance_logs` dengan filter kelas.
 
-**Tech Stack:** Next.js 16.4.6 (App Router, Turbopack, `cacheComponents`), React 19.3.0, Tailwind CSS 4.3.3 (`@tailwindcss/turbopack`), `@supabase/supabase-js` 2.119.0, `@supabase/ssr` 0.12.7, `qrcode.react` 4.2.0, `html5-qrcode` 2.3.8, `xlsx` 0.18.5, Font Awesome 7.3.1, plus `clsx` + `tailwind-merge`.
+**Tech Stack:** Next.js 16.4.6 (App Router, Turbopack, `cacheComponents` + `partialPrefetching`), React 19.3.1, Tailwind CSS 4.3.5 (`@tailwindcss/postcss`), `@supabase/supabase-js` 2.119.0, `@supabase/ssr` 0.12.7, `qrcode.react` 4.2.0, `html5-qrcode` 2.3.8, `xlsx` 0.18.5, Font Awesome 7.3.1 (`@fortawesome/react-fontawesome` 3.5.0), plus `clsx` 2.1.1 + `tailwind-merge` 3.7.0, TypeScript 5.9.3, ESLint 9.39.5. Semua versi ini versi nyata di registry saat Batch 1 dieksekusi — rincian deviasi di Bagian 10.
 
 **Sumber desain:** `docs/DESIGN.md` (sudah final: kanvas `#F4F5F7`, kartu putih `rounded-2xl`, aksen lime `#8CE827`, kartu gelap `#0F172A`, dock kiri ikon-only, grafik batang 1 batang highlight + tooltip hitam).
 
@@ -327,51 +327,69 @@ Setiap batch diakhiri gate verifikasi. Batch berikutnya tidak boleh mulai sebelu
     "uji": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "7.3.1",
-    "@fortawesome/free-solid-svg-icons": "7.3.1",
-    "@fortawesome/react-fontawesome": "3.2.0",
-    "@supabase/ssr": "0.12.7",
-    "@supabase/supabase-js": "2.119.0",
-    "clsx": "2.1.1",
-    "html5-qrcode": "2.3.8",
+    "@fortawesome/fontawesome-svg-core": "^7.3.1",
+    "@fortawesome/free-solid-svg-icons": "^7.3.1",
+    "@fortawesome/react-fontawesome": "^3.5.0",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.119.0",
+    "clsx": "^2.1.1",
+    "html5-qrcode": "^2.3.8",
     "next": "16.4.6",
-    "qrcode.react": "4.2.0",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "tailwind-merge": "2.5.4",
-    "xlsx": "0.18.5"
+    "qrcode.react": "^4.2.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwind-merge": "^3.7.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "4.3.3",
-    "@types/node": "22.10.2",
-    "@types/react": "19.0.2",
-    "@types/react-dom": "19.0.2",
-    "eslint": "9.17.0",
+    "@tailwindcss/postcss": "^4.3.5",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.5",
     "eslint-config-next": "16.4.6",
-    "tailwindcss": "4.3.3",
-    "typescript": "5.7.2"
+    "tailwindcss": "^4.3.5",
+    "typescript": "^5.9.3"
   }
 }
 ```
 
-- Run: `npm install --maxsockets=1` (mitigasi `ECONNRESET`).
-- Expected: `node_modules/` ada, `npm ls next` → `next@16.4.6`.
+- Run: `NODE_ENV=development npm install --include=dev --maxsockets=1` (mitigasi `ECONNRESET` **dan** `npm config get omit` = `dev` di mesin ini, yang membuat devDependencies dilewati tanpa `--include=dev`).
+- Expected: `node_modules/` ada, `npm ls next` → `next@16.4.6`, `typescript@5.9.3`, `tailwindcss@4.3.5`, `eslint@9.39.5` terpasang.
+- Catatan: `package-lock.json` **tidak terbentuk** di mesin ini (`EALLOWREMOTE`), jadi install mengulang dari `package.json` tiap mesin.
 
 **Task 1.2 — Config files**
 
-`next.config.ts`:
+`next.config.ts` (bentuk final, sudah diverifikasi build):
 ```ts
 import type { NextConfig } from 'next'
-const nextConfig: NextConfig = { experimental: { cacheComponents: true } }
+const nextConfig: NextConfig = { cacheComponents: true, partialPrefetching: true }
 export default nextConfig
 ```
+`experimental.cacheComponents` **deprecated** di 16.4.6. Melewatkan `partialPrefetching` memunculkan peringatan build "cacheComponents is enabled without a corresponding partialPrefetching option".
 
 `postcss.config.mjs`:
 ```js
-export default { plugins: { '@tailwindcss/postcss': {} } }
+const konfigurasi = { plugins: { '@tailwindcss/postcss': {} } }
+export default konfigurasi
+```
+(tanpa variabel perantara, ESLint memunculkan `import/no-anonymous-default-export`)
+
+`eslint.config.mjs` — eslint-config-next 16 mengekspor **flat config array** langsung, jadi tanpa `FlatCompat` dan tanpa `@eslint/eslintrc`:
+```js
+import coreWebVitals from 'eslint-config-next/core-web-vitals'
+import typescript from 'eslint-config-next/typescript'
+
+const konfigurasi = [
+  { ignores: ['.next/**', 'node_modules/**', 'next-env.d.ts', 'scripts/**', 'tests/**'] },
+  ...coreWebVitals,
+  ...typescript,
+]
+
+export default konfigurasi
 ```
 
-`tsconfig.json`: `paths: { "@/*": ["./src/*"] }`, `strict: true`, `exclude: ["node_modules", "scripts", "tests"]` (kalau tidak, `tsc` gagal `TS5097`).
+`tsconfig.json`: `paths: { "@/*": ["./src/*"] }`, `strict: true`, `exclude: ["node_modules", "scripts", "tests"]` (kalau tidak, `tsc` gagal `TS5097`). `next build` akan **menulis ulang** dua nilai ini sendiri: `jsx: preserve` → `react-jsx`, dan `include` += `.next/dev/types/**/*.ts`. Biarkan, jangan dilawan.
 
 `.gitignore`: `node_modules/ .next/ .env*.local *.tsbuildinfo .vercel/`
 
@@ -900,6 +918,10 @@ export function useKehadiranLive(sessionId: string, awal: string[]) {
 | Realtime diam | pastikan tabel masuk `supabase_realtime` + `replica identity full` + RLS select untuk `authenticated` |
 | Zona waktu | semua hitung tanggal pakai `Asia/Jakarta` |
 | Token QR tanpa secret | `QR_HMAC_SECRET` wajib ada, fail-fast saat start |
+| `npm config get omit` = `dev` (mesin ini) | devDependencies dilewati tanpa error → `NODE_ENV=development npm install --include=dev` |
+| `experimental.cacheComponents` deprecated di 16.4.6 | pakai top-level `cacheComponents: true` + `partialPrefetching: true` |
+| `FlatCompat` + `next/core-web-vitals` (cara Next 14/15) | eslint-config-next 16 ekspor flat config array: `import coreWebVitals from 'eslint-config-next/core-web-vitals'` |
+| `import/no-anonymous-default-export` pada config `.mjs` | simpan ke `const konfigurasi` lalu `export default konfigurasi` |
 
 ## 8. Risiko & Pertanyaan Terbuka
 
@@ -912,3 +934,49 @@ export function useKehadiranLive(sessionId: string, awal: string[]) {
 ## 9. Urutan Eksekusi
 
 Batch 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8. Setiap batch: implementasi, jalankan gate, laporkan hasil nyata (exit code + output), baru lanjut. Kalau gate merah, perbaiki dulu; jangan tumpuk batch berikutnya di atas fondasi rusak.
+
+## 10. Catatan Eksekusi Batch 1 (18 Nov 2026)
+
+Status: **selesai, gate hijau.** Commit `09055f3 chore: scaffold Next 16.4.6 + Tailwind 4 + config proyek (batch 1)`.
+
+### 10.1 Versi terpasang (hasil `require('node_modules/<pkg>/package.json').version`)
+
+| Paket | Versi nyata |
+| :--- | :--- |
+| next | 16.4.6 |
+| react / react-dom | 19.3.1 |
+| typescript | 5.9.3 |
+| tailwindcss / @tailwindcss/postcss | 4.3.5 |
+| eslint / eslint-config-next | 9.39.5 / 16.4.6 |
+| @types/node / @types/react | 22.20.5 / 19.3.0 |
+| @supabase/ssr / @supabase/supabase-js | 0.12.7 / 2.119.0 |
+| qrcode.react / html5-qrcode / xlsx | 4.2.0 / 2.3.8 / 0.18.5 |
+| clsx / tailwind-merge | 2.1.1 / 3.7.0 |
+| Font Awesome core + solid + react | 7.3.1 / 7.3.1 / 3.5.0 |
+
+### 10.2 Deviasi dari rencana awal (semua karena plan menulis versi/API yang tidak sesuai registry)
+
+1. Versi paket dikoreksi ke versi registry (react 19.3.0 → 19.3.1, tailwind 4.3.3 → 4.3.5, `@fortawesome/react-fontawesome` 3.2.0 → 3.5.0, tailwind-merge 2.5.4 → 3.7.0, typescript 5.7.2 → 5.9.3, eslint 9.17.0 → 9.39.5, `@types/react` 19.0.2 → 19.3.0).
+2. `cacheComponents` dipindah ke top-level (di 16.4.6 `experimental.cacheComponents` deprecated) dan `partialPrefetching: true` ditambahkan agar build tanpa peringatan.
+3. Install pertama hanya memasang 49 paket karena `npm config get omit` = `dev`; diulang dengan `NODE_ENV=development ... --include=dev` → 339 paket.
+4. `eslint.config.mjs` memakai flat config bawaan `eslint-config-next` (tanpa `FlatCompat`, tanpa `@eslint/eslintrc`).
+5. `tsconfig.json` ditulis ulang otomatis oleh `next build`: `jsx: react-jsx` dan `include` += `.next/dev/types/**/*.ts`.
+6. `package-lock.json` tidak terbentuk (`EALLOWREMOTE`) — sesuai jebakan yang sudah tercatat.
+
+### 10.3 Bukti gate
+
+```
+tsc --noEmit         → exit 0
+eslint .             → exit 0 (0 error, 0 warning)
+next build           → exit 0; "✓ Compiled successfully"; rute: ƒ / , ○ /_not-found
+next start -p 3100   → GET / = 200 (body memuat "Sistem Absensi SMK Negeri 1 Wangkelang"), GET /halaman-tidak-ada = 404
+npm ls next          → next@16.4.6
+```
+
+### 10.4 Env terpasang
+
+`.env.local` berisi `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (legacy anon), `SUPABASE_SERVICE_ROLE_KEY` (role `service_role`, ref `xlnrgtwqyzrwrchdczvf`, exp 2036-11-16), `SCHOOL_SECRET_CODE`, `QR_HMAC_SECRET` (64 char hasil `randomBytes(48).toString('base64url')`). File di-ignore git. Key belum diuji ke DB — pengujian nyata terjadi di Gate 2.
+
+### 10.5 Yang sengaja belum dikerjakan
+
+`AGENTS.md` (Task 8.2), `scripts/*` (Batch 2/8), `tests/*` (Batch 3), seluruh `src/app/api/*` dan `src/lib/*` (Batch 3 ke atas).
