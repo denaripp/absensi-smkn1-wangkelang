@@ -1247,3 +1247,58 @@ Gate lokal: `npm run uji` 20/20, `tsc` 0, `eslint` 0, `next build` sukses. Rute 
 ### 15.5 Kondisi data
 
 2 mapel (`Pemrograman Web & Perangkat Bergerak`, `Basis Data`), 5 siswa, 1 kelas, 1 jadwal, 2 sesi CLOSED. Log: sesi pertama 1 SAKIT + 4 ALPA; sesi kedua 1 HADIR + 4 ALPA. Siswa `0061234501` perangkatnya terkunci ke `aaaaaaaa-1111-4111-8111-111111111111`; siswa `0061234502` terkunci ke `bbbbbbbb-2222-4222-8222-222222222222` (dipakai untuk uji token kedaluwarsa).
+
+## 16. Catatan Eksekusi Batch 7 (18 Nov 2026)
+
+Status: **selesai, gate hijau.** CRUD kelas/mapel/murid, import Excel, reset kunci HP, dan ekspor rekap semuanya jalan dengan data nyata.
+
+### 16.1 File yang dibuat
+
+| File | Isi |
+| :--- | :--- |
+| `src/lib/otoritas.ts` | `kelasDiampu()` (jadwal + sesi guru), `bolehKelolaKelas()` |
+| `src/app/api/siswa/route.ts` | Tambah murid: buat akun auth (`nisn@siswa.absensi.local`, sandi = NISN) + rollback bila profil gagal |
+| `src/app/api/siswa/[id]/route.ts` | `PATCH` nama/kelas, `DELETE` via `auth.admin.deleteUser` (cascade) |
+| `src/app/api/siswa/import/route.ts` | Baca `.xlsx` (maks 2 MB), validasi kolom `nisn`/`nama`/`kelas`, laporkan `{dibuat, dilewati, gagal[]}` |
+| `src/app/api/reset-device/route.ts` | Kosongkan `device_lock_id` + `device_fingerprint`, tulis audit `RESET` dengan `actor_id` |
+| `src/app/api/kelas/route.ts` + `kelas/[id]/route.ts` | Tambah/ubah/hapus kelas; hapus ditolak `409` bila masih ada siswa |
+| `src/app/api/mapel/route.ts` + `mapel/[id]/route.ts` | Tambah/ubah/hapus mapel milik guru; hapus ditolak `409` bila sudah dipakai sesi |
+| `src/app/api/rekap/export/route.ts` | `.xlsx` dari sesi + log pada rentang tanggal, header `content-disposition` |
+| `src/app/(guru)/guru/{murid,kelas,mapel,rekap}/page.tsx` | 4 halaman pengelolaan |
+| `src/components/Panel{Murid,Kelas,Mapel,Rekap}.tsx` | Form + tabel + aksi, semua memanggil route handler |
+| `src/components/Dock.tsx` | 5 menu aktif (tidak ada lagi `aria-disabled`) |
+| `scripts/buat-template-siswa.cjs` | Generator `template-siswa.xlsx` (3 kolom + 2 baris contoh) |
+
+### 16.2 Bukti gate (curl nyata, server `:3100`)
+
+| # | Uji | Hasil |
+| :--- | :--- | :--- |
+| 1 | Impor `.xlsx` 4 baris (3 valid + 1 kelas salah) | `{"dibuat":3,"dilewati":0,"gagal":[{"baris":5,"alasan":"kelas \"KELAS TIDAK ADA\" tidak ada"}]}` |
+| 2 | `GET /guru/murid` | `200`, 35.990 byte, memuat nama hasil impor |
+| 3 | Tambah murid manual | `{"ok":true,"id":"a53931e5-…"}` |
+| 4 | Tambah murid ke kelas yang tidak diampu | `403 {"error":"kamu tidak mengampu kelas ini"}` |
+| 5 | Ekspor rekap 1–30 Nov | 19.738 byte, `content-disposition: attachment; filename="rekap-XII-RPL-1-2026-11-01_2026-11-30.xlsx"`, MIME xlsx |
+| 6 | Baca ulang file ekspor | sheet `Rekap Absensi`, 11 baris, header `No, Tanggal, Jam Scan, NISN, Nama Siswa, Mata Pelajaran, Status, Catatan`, contoh baris `1 | 2026-11-18 | 21:38:50 | 0061234502 | Siti Nurhaliza | Pemrograman Web & Perangkat Bergerak | SAKIT | surat dokter` |
+| 7 | Reset kunci HP `0061234501` | `{"ok":true}` → DB `device=null`, audit `RESET=1` |
+| 8 | Rename + hapus kelas uji | `{"ok":true}` dua-duanya |
+| 9 | Tambah + rename + hapus mapel uji | `{"ok":true}` tiga-tiganya |
+| 10 | Hapus murid manual | `{"ok":true}` |
+
+DB setelah uji: 8 siswa (`0061234501`–`0061234505` + `0061234520`–`0061234522`), 1 kelas `XII RPL 1`, 2 mapel, audit `RESET=1, MISMATCH=1, LOCK=2`.
+
+Gate lokal: `npm run uji` 20/20, `tsc` 0, `eslint` 0, `next build` sukses. Rute baru: `/guru/{murid,kelas,mapel,rekap}` (partial prerender) + 9 route handler `/api/{siswa,kelas,mapel,reset-device,rekap/export}`.
+
+### 16.3 Deviasi dari rencana awal
+
+1. **`EXCEL` impor memakai header fleksibel.** Selain `nisn`/`nama`/`kelas`, diterima juga `nis` dan `nama lengkap`, dan pencocokan nama kelas tidak peduli huruf besar/kecil. Tanpa ini file buatan sekolah (yang sering berheader beda) akan gagal semua.
+2. **Hapus kelas/mapel ditolak `409`, bukan dibiarkan gagal FK.** Pesannya menyebut jumlah siswa/sesi yang menghalangi, supaya guru tahu harus apa.
+3. **Ekspor memakai `admin` client** karena join nama siswa/mapel lintas tabel tidak terjamin lewat RLS guru; otorisasi tetap dicek lebih dulu dengan `bolehKelolaKelas`.
+4. **Dock disederhanakan**: logika `aria-disabled` dihapus karena kelima rute kini ada.
+5. **`template-siswa.xlsx` tidak di-commit** — dibuat ulang kapan saja lewat `node scripts/buat-template-siswa.cjs`.
+6. **`hariIniLabel()` ditambahkan** ke `src/lib/format.ts` (alias `tanggalPanjangWIB`) untuk header halaman rekap.
+
+### 16.4 Yang belum dibuktikan
+
+1. Rate limit seluruh endpoint mutasi dan `POST /api/absen` — Batch 8.
+2. Realtime guru/siswa dua tab — Batch 8.
+3. Uji kamera di perangkat nyata — tetap tidak bisa dari laptop ini.

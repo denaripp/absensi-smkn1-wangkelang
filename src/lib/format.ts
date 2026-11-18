@@ -50,3 +50,7 @@ export function hariKeWIB(waktu: Date | string = new Date()) {
   )
   return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(nama) + 1
 }
+
+export function hariIniLabel(waktu: Date | string = new Date()) {
+  return tanggalPanjangWIB(waktu)
+}

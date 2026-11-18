@@ -13,11 +13,11 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 
 const MENU = [
-  { href: '/guru', label: 'Dashboard', ikon: faHouse, siap: true },
-  { href: '/guru/murid', label: 'Data Murid', ikon: faUsers, siap: false },
-  { href: '/guru/kelas', label: 'Kelas', ikon: faSchool, siap: false },
-  { href: '/guru/mapel', label: 'Mapel', ikon: faBook, siap: false },
-  { href: '/guru/rekap', label: 'Rekap', ikon: faChartSimple, siap: false },
+  { href: '/guru', label: 'Dashboard', ikon: faHouse },
+  { href: '/guru/murid', label: 'Data Murid', ikon: faUsers },
+  { href: '/guru/kelas', label: 'Kelas', ikon: faSchool },
+  { href: '/guru/mapel', label: 'Mapel', ikon: faBook },
+  { href: '/guru/rekap', label: 'Rekap', ikon: faChartSimple },
 ]
 
 export default function Dock() {
@@ -39,33 +39,20 @@ export default function Dock() {
         SM
       </div>
 
-      {MENU.map((item) =>
-        item.siap ? (
-          <Link
-            key={item.href}
-            href={item.href}
-            title={item.label}
-            aria-label={item.label}
-            aria-current={jalur === item.href ? 'page' : undefined}
-            className={`grid size-10 place-items-center rounded-2xl text-sm transition ${
-              jalur === item.href ? 'bg-gelap text-white' : 'text-teks-2 hover:bg-kanvas'
-            }`}
-          >
-            <FontAwesomeIcon icon={item.ikon} />
-          </Link>
-        ) : (
-          <span
-            key={item.href}
-            role="link"
-            aria-disabled="true"
-            title={`${item.label} — dibangun di Batch 7`}
-            aria-label={`${item.label} belum tersedia`}
-            className="grid size-10 cursor-not-allowed place-items-center rounded-2xl text-sm text-teks-2 opacity-40"
-          >
-            <FontAwesomeIcon icon={item.ikon} />
-          </span>
-        ),
-      )}
+      {MENU.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          title={item.label}
+          aria-label={item.label}
+          aria-current={jalur === item.href ? 'page' : undefined}
+          className={`grid size-10 place-items-center rounded-2xl text-sm transition ${
+            jalur === item.href ? 'bg-gelap text-white' : 'text-teks-2 hover:bg-kanvas'
+          }`}
+        >
+          <FontAwesomeIcon icon={item.ikon} />
+        </Link>
+      ))}
 
       <button
         type="button"
