@@ -4,6 +4,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { verifikasiToken } from '@/lib/qr'
 import { periksaDevice } from '@/lib/device'
 import { jamWIB } from '@/lib/format'
+import { batasi, ipDari } from '@/lib/limit'
 
 const POLA_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const POLA_FINGERPRINT = /^[0-9a-f]{64}$/i
@@ -13,6 +14,14 @@ function tolak(pesan: string, status: number) {
 }
 
 export async function POST(request: Request) {
+  const batas = batasi(`absen:${ipDari(request)}`, 10, 60_000)
+  if (!batas.boleh) {
+    return NextResponse.json(
+      { error: `terlalu banyak percobaan, tunggu ${batas.tungguDetik} detik` },
+      { status: 429, headers: { 'retry-after': String(batas.tungguDetik) } },
+    )
+  }
+
   let body: Record<string, unknown>
   try {
     body = (await request.json()) as Record<string, unknown>

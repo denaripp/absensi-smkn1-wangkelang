@@ -1302,3 +1302,67 @@ Gate lokal: `npm run uji` 20/20, `tsc` 0, `eslint` 0, `next build` sukses. Rute 
 1. Rate limit seluruh endpoint mutasi dan `POST /api/absen` — Batch 8.
 2. Realtime guru/siswa dua tab — Batch 8.
 3. Uji kamera di perangkat nyata — tetap tidak bisa dari laptop ini.
+
+## 17. Catatan Eksekusi Batch 8 (18 Nov 2026)
+
+Status: **selesai, gate hijau.** Data demo 36 siswa masuk, rate limit aktif, realtime terbukti, audit layout desktop & HP bersih.
+
+### 17.1 File yang dibuat / diubah
+
+| File | Isi |
+| :--- | :--- |
+| `scripts/seed-demo.ts` | Seed idempoten: kelas, guru, 3 mapel, 5 jadwal, 36 siswa (upsert per NISN, nama dinormalkan) |
+| `src/lib/limit.ts` | `batasi()` (Map + TTL), `ipDari()`, `kosongkanBatas()`; `shortcut:` per-instance, bukan Redis |
+| `tests/limit.test.ts` | 4 test: batas, kunci terpisah, pemulihan jendela, `tungguDetik` |
+| `src/app/api/absen/route.ts` | Rate limit 10/menit/IP → `429` + `retry-after` |
+| `src/app/api/auth/login/route.ts` | Rate limit 10/menit/IP (di luar rencana awal) |
+| `AGENTS.md` | Ditulis ulang: stack, perintah, 8 aturan Next 16, peta rute, keamanan, data demo, jebakan host |
+
+### 17.2 Hasil seed
+
+```
+{"kelas":"XII RPL 1","siswaBaru":28,"siswaDiperbarui":8,"totalSiswa":36,"totalMapel":3,"totalJadwal":6}
+```
+
+Sesudah pembersihan satu jadwal sisa Batch 5 (Selasa jam ke-3): 5 jadwal Senin–Jumat jam ke-1, 07:00–08:30. Siswa `0061234520`–`0061234522` (sisa uji impor Batch 7) ikut dinormalkan namanya jadi bagian 36 siswa.
+
+### 17.3 Bukti Gate 8
+
+| # | Uji | Hasil |
+| :--- | :--- | :--- |
+| 1 | `npm run uji` | `# tests 24`, `# pass 24`, `# fail 0` |
+| 2 | `tsc --noEmit` | exit 0 |
+| 3 | `next build` | sukses, 29 rute: `/`, `/ganti-sandi`, `/register-guru`, `/guru`, `/guru/{kelas,mapel,murid,rekap}`, `/siswa`, `/siswa/scan`, 19 route handler `/api/**` |
+| 4 | `GET /` | `200` |
+| 5 | Login guru | `200 {"ok":true,"role":"GURU","mustChangePassword":false}` |
+| 6 | Buka sesi + `GET /api/qr` | `{"sessionId":"b053d27c-…"}` + token `b053d27c-….119667595.ArbUG4…` (`expiresInMs` 9.851) |
+| 7 | Absen ulang | `409 {"error":"kamu sudah absen di sesi ini"}` |
+| 8 | Tutup sesi | `{"ok":true,"alpa":35,"totalSiswa":36}` — 1 HADIR + 35 ALPA |
+| 9 | Device mismatch | `403 {"error":"perangkat berbeda. Hubungi guru untuk reset kunci HP"}` |
+| 10 | **Realtime** | channel `SUBSCRIBED`, absen `200 {"status":"HADIR","jam":"21:59:57"}`, payload diterima: `{"student_id":"0a7a01b0-…","status":"HADIR","session_id":"b053d27c-…"}` |
+| 11 | Ekspor Excel | `200`, 31.565 byte, sheet `Rekap Absensi`, 47 baris, header utuh, baris contoh: No 1, `2026-11-18`, `21:38:50`, `0061234502`, Siti Nurhaliza, Pemrograman Web & Perangkat Bergerak, `SAKIT`, `surat dokter` |
+| 12 | Guard | `/guru` tanpa cookie → `307 /`; siswa → `/guru` `307 /siswa` |
+| + | Rate limit `POST /api/absen` | percobaan 1–10 → `400`, percobaan ke-11 → **`429`** |
+
+Audit layout via Chromium CDP (`scrollWidth` vs `clientWidth`, harus sama):
+
+| Halaman | 1560px | 420px |
+| :--- | :--- | :--- |
+| `/guru` | `sw=1560 cw=1560` ✅ (judul "Selamat Malam, Rahmat", 5 kartu) | `sw=420 cw=420` ✅ |
+| `/siswa` | `sw=1545 cw=1545` ✅ ("Sandi Pratama", badge "Perangkat Terkunci" ada, 4 kartu) | `sw=420 cw=420` ✅ |
+
+### 17.4 Deviasi dari rencana awal
+
+1. **Rate limit juga dipasang di `/api/auth/login`**, bukan hanya `/api/absen`. Tanpa itu tebak-sandi NISN tidak dibatasi sama sekali.
+2. **Limiter berbasis memori per-instance.** Ditandai `shortcut:` di `src/lib/limit.ts`; kalau nanti jalan di beberapa instance, pindahkan ke tabel/Redis.
+3. **Seed menyetel `must_change_password=false`** untuk siswa demo supaya bisa langsung dipakai uji; guru tetap `false` karena sudah pernah ganti sandi.
+4. **Satu jadwal sisa Batch 5 dihapus** (Selasa jam ke-3) agar sesuai rencana 5 jadwal.
+5. **Uji realtime memakai skrip Node** (`supabase-js` + JWT guru), bukan dua tab browser: cookie browser dipakai bersama antar tab, jadi guru dan siswa tidak bisa login bersamaan di satu profil. Skrip memakai jalur yang sama (channel `postgres_changes`, RLS, publikasi) lalu memicu absen lewat HTTP.
+6. **Audit `/siswa` memakai siswa `0061234535`** (belum terkunci) karena login dari Chromium akan mengunci perangkat; siswa `0061234534` sebelumnya sudah terkunci ke `cccccccc…`.
+7. **Cookie jar curl sempat basi** saat uji ekspor (`{"error":"belum login"}`); login ulang dengan jar baru → `200` dan file valid. Tidak ada perubahan kode.
+
+### 17.5 Yang tetap belum bisa dibuktikan di mesin ini
+
+1. **Kamera asli** — hardware laptop rusak; jalur `html5-qrcode` hanya terbukti lewat build + alur API + fallback `/siswa/scan?token=`.
+2. **Rate limit terdistribusi** — perlu store bersama kalau deploy multi-instance.
+3. **Audit log untuk CRUD kelas/mapel** — belum ada; hanya device lock yang ber-audit.
