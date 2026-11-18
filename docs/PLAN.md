@@ -419,7 +419,7 @@ QR_HMAC_SECRET=<openssl rand -base64 48>
 
 ```sql
 select count(*) from information_schema.tables where table_schema='public';       -- 7
-select count(*) from pg_policies where schemaname='public';                        -- 8
+select count(*) from pg_policies where schemaname='public';                        -- 7 (rencana awal menulis 8; jumlah policy di Bagian 3 memang 7)
 select tablename from pg_publication_tables where pubname='supabase_realtime';     -- sessions, attendance_logs
 ```
 **Task 2.4** — `scripts/cek-koneksi.ts` (admin client + anon client, cek select dari `classes`), run:
@@ -980,3 +980,45 @@ npm ls next          → next@16.4.6
 ### 10.5 Yang sengaja belum dikerjakan
 
 `AGENTS.md` (Task 8.2), `scripts/*` (Batch 2/8), `tests/*` (Batch 3), seluruh `src/app/api/*` dan `src/lib/*` (Batch 3 ke atas).
+
+## 11. Catatan Eksekusi Batch 2 (18 Nov 2026)
+
+Status: **selesai, gate hijau.** Migrasi `absensi_001_schema` + `absensi_002_rls` diterapkan ke project `xlnrgtwqyzrwrchdczvf`.
+
+### 11.1 Bukti struktur DB (hasil `execute_sql`)
+
+| Cek | Hasil |
+| :--- | :--- |
+| Tabel `public` | 7 |
+| Tabel dengan RLS aktif | 7 |
+| Policy total | 7 (`audit_baca, classes_baca, logs_baca, schedules_baca, sessions_baca, subjects_baca, users_baca`) |
+| Policy INSERT/UPDATE/DELETE untuk `authenticated` | **0** |
+| Tabel di publication `supabase_realtime` | `attendance_logs`, `sessions` |
+| Fungsi helper | `saya_role`, `saya_kelas` (keduanya `prosecdef = true`) |
+| Index | 23, termasuk `sessions_satu_aktif_per_kelas` (`UNIQUE ... WHERE status = 'ACTIVE'`) |
+| Unique constraint | 6, termasuk `attendance_logs_session_id_student_id_key` dan `sessions_class_id_subject_id_session_date_key` |
+| `users_id_fkey` | `confdeltype = c` (ON DELETE CASCADE ke `auth.users`) |
+| Default `must_change_password` | `true` |
+| `(now() at time zone 'Asia/Jakarta')::date` | `2026-11-18` |
+
+### 11.2 Bukti `scripts/cek-koneksi.ts` (exit 0)
+
+```
+ADMIN BACA OK (0 baris)
+ADMIN BACA attendance_logs OK (count=0)
+ADMIN TULIS+HAPUS OK (roundtrip bersih)
+ANON OK (0 baris, RLS menahan data)
+ANON TULIS DITOLAK OK (42501)
+```
+
+Script menambah dua cek di luar rencana awal: roundtrip tulis+hapus sebagai admin (service role terbukti punya izin tulis) dan percobaan tulis sebagai anon yang **wajib gagal** (membuktikan RLS tidak bocor). Data uji dibersihkan pada run yang sama.
+
+### 11.3 Deviasi dari rencana awal
+
+1. **Jumlah policy = 7, bukan 8.** Bagian 3 plan memang hanya berisi 7 statement `create policy`; angka 8 di Gate 2 adalah salah hitung. Gate dikoreksi, bukan policy ditambah asal-asalan.
+2. `002_rls.sql` menambah `revoke all ... from anon` + `grant execute ... to authenticated` pada kedua fungsi helper. Tanpa itu, fungsi helper masih bisa dipanggil anon walau policy-nya `to authenticated`.
+3. `cek-koneksi.ts` memakai `main().catch(...)`, bukan top-level `await`, karena `package.json` tidak memakai `"type": "module"`. Node memunculkan peringatan `MODULE_TYPELESS_PACKAGE_JSON` (kosmetik, tidak memblokir).
+
+### 11.4 Yang belum ada (memang jadwalnya nanti)
+
+Belum ada data apa pun (0 kelas, 0 user, 0 sesi) — itu Batch 8 (`seed-demo.ts`). Belum ada endpoint maupun halaman yang memakai tabel ini (Batch 4 ke atas). Belum ada uji RLS dengan JWT siswa/guru sungguhan; uji itu butuh akun nyata dan terjadi di Gate 4/6.
