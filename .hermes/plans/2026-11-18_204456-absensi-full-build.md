@@ -1062,3 +1062,69 @@ next build     → exit 0, "✓ Compiled successfully", rute ƒ /
 ### 12.4 Yang belum ada
 
 Belum ada route handler, `src/proxy.ts`, halaman, atau komponen. `requireRole` belum dipanggil di mana pun — pemakai pertamanya adalah Batch 4.
+
+## 13. Catatan Eksekusi Batch 4 (18 Nov 2026)
+
+Status: **selesai, gate hijau.** Auth end-to-end jalan di server produksi lokal `:3100`.
+
+### 13.1 File yang dibuat
+
+| File | Isi |
+| :--- | :--- |
+| `src/proxy.ts` | Guard role + `must_change_password`. Route `/api/**` **dilewati** (lihat deviasi 1). |
+| `src/app/page.tsx` | Halaman masuk, `instant = false` + `await connection()`, tab Siswa/Guru |
+| `src/components/FormMasuk.tsx` | Kirim `{identifier, password, role, deviceLockId, fingerprint}`; siswa menghitung identitas perangkat di browser |
+| `src/lib/kunci.ts` | `ambilDeviceLockId()` (UUID localStorage) + `buatFingerprintBrowser()` (Web Crypto SHA-256, bahan sama dengan server) |
+| `src/app/api/auth/login/route.ts` | Verifikasi password dulu → cek role → cek device (siswa) → set cookie sesi |
+| `src/app/register-guru/page.tsx` + `components/FormDaftarGuru.tsx` | Pendaftaran guru + kode sekolah |
+| `src/app/api/register-guru/route.ts` | `timingSafeEqual` kode sekolah, `admin.createUser`, insert profil, rollback bila insert gagal |
+| `src/app/ganti-sandi/page.tsx` + `components/FormGantiSandi.tsx` | Ganti sandi + tombol keluar |
+| `src/app/api/auth/ganti-sandi/route.ts` | `auth.updateUser({password})` → `must_change_password=false` |
+| `src/app/api/auth/logout/route.ts` | `POST` (JSON) + `GET` (redirect, dipakai proxy) |
+
+### 13.2 Bukti gate (curl nyata, `next start -p 3100`)
+
+| # | Uji | Hasil |
+| :--- | :--- | :--- |
+| 1 | Daftar guru, kode sekolah benar | `200 {"ok":true}` |
+| 2 | Daftar guru, kode salah | `403 {"error":"kode sekolah salah"}` |
+| 3 | Login guru | `200 {"ok":true,"role":"GURU","mustChangePassword":true}` + `set-cookie: sb-xlnrgtwqyzrwrchdczvf-auth-token=…` |
+| 4 | `/guru` tanpa cookie | `307`, `location: /` |
+| 5 | `/siswa` tanpa cookie | `307` |
+| 6 | `/ganti-sandi` tanpa cookie | `307` |
+| 7 | `/` dengan cookie, `must_change=true` | `307`, `location: /ganti-sandi` |
+| 8 | `/guru` dengan cookie, `must_change=true` | `307`, `location: /ganti-sandi` |
+| 9 | `/ganti-sandi` dengan cookie, `must_change=true` | `200` |
+| 10 | `POST /api/auth/ganti-sandi` | `200 {"ok":true}` |
+| 11 | Login dengan password **lama** setelah ganti | `401` (password benar-benar berubah) |
+| 12 | `/ganti-sandi` setelah `must_change=false` | `307`, `location: /guru` |
+| 13 | `/guru` dengan cookie guru sah | `404` (bukan `307` — artinya guard sudah meloloskan; halaman baru dibuat di Batch 5) |
+| 14 | Logout `POST` | `200 {"ok":true}`, `/guru` kembali `307` |
+
+Uji Device Lock (akun siswa sementara, kelas sementara, sudah dihapus lagi):
+
+| # | Uji | Hasil |
+| :--- | :--- | :--- |
+| 15 | Login HP pertama | `200` + `device_lock_id` tersimpan (`aaaaaaaa…`) |
+| 16 | Login HP yang sama | `200` |
+| 17 | Login dari HP lain | `403 {"error":"perangkat berbeda. Hubungi guru untuk reset kunci HP"}` |
+| 18 | Login akun siswa dengan `role: GURU` | `403 {"error":"akun ini bukan akun GURU"}` |
+| 19 | Login siswa tanpa identitas perangkat | `400` |
+| 20 | Login password salah dari HP lain | `401`, dan audit **tidak** bertambah |
+
+DB setelah uji: `users=1` (guru), `classes=0`, `device_lock_audit=0`, `auth.users=1`. Audit sempat tercatat `LOCK=1, MISMATCH=1` saat uji — angka itu jadi bukti, lalu ikut terhapus bersama akun uji (cascade).
+
+Gate lokal: `npm run uji` 20/20 pass, `tsc` 0, `eslint` 0, `next build` sukses dengan rute `/`, `/ganti-sandi`, `/register-guru`, `/api/auth/{login,logout,ganti-sandi}`, `/api/register-guru`.
+
+### 13.3 Deviasi dari rencana awal
+
+1. **Proxy melewati `/api/**`.** Plan tidak menyebut ini. Tanpa pengecualian, `curl` ke `/api/auth/login` akan dibelokkan `307` sebelum route handler jalan, dan API tidak bisa mengembalikan JSON 401/403.
+2. **Password diverifikasi sebelum cek device.** Plan menaruh cek device di langkah 3 dan login di langkah 4. Urutan itu berbahaya: orang lain bisa **mengunci HP siswa** hanya dengan menebak NISN tanpa tahu password. Sekarang: `signInWithPassword` dulu → device. Kalau device mismatch, sesi langsung `signOut()`.
+3. **Email auth diambil dari `admin.auth.admin.getUserById`, bukan ditebak** dari pola `identifier@siswa.absensi.local`. Pola tebakan gagal untuk akun guru yang memakai email asli.
+4. **Navigasi klien pakai `next/link` dan `useRouter().replace()`**, bukan `<a>` / `window.location.href`. `eslint .` menolak bentuk pertama (2 error + 2 warning).
+5. **`/ganti-sandi` tidak memakai `instant = false`** karena tidak membaca cookie/DB sendiri; guard-nya tetap di proxy.
+6. Halaman `/guru` dan `/siswa` belum ada, jadi hasil uji guard yang benar adalah `404` setelah lolos, bukan `200`.
+
+### 13.4 Kondisi data saat ini
+
+Satu akun guru aktif: `identifier=198705122010011004`, `role=GURU`, `must_change_password=false`, sandi saat ini `GuruBaru#2026` (hasil uji ganti sandi). Belum ada kelas, siswa, mapel, atau sesi.

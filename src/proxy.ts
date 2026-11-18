@@ -1,0 +1,65 @@
+import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+
+const PUBLIK = ['/', '/register-guru']
+
+export async function proxy(request: NextRequest) {
+  const response = NextResponse.next({ request })
+  const jalur = request.nextUrl.pathname
+
+  // Route handler mengurus auth sendiri (dan butuh mengembalikan JSON 401, bukan redirect 307).
+  if (jalur.startsWith('/api')) return response
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (list) => {
+          for (const { name, value, options } of list) response.cookies.set(name, value, options)
+        },
+      },
+    },
+  )
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const publik = PUBLIK.includes(jalur)
+
+  if (!user) return publik ? response : NextResponse.redirect(new URL('/', request.url))
+
+  const { data: profil } = await supabase
+    .from('users')
+    .select('role, must_change_password')
+    .eq('id', user.id)
+    .single()
+
+  if (!profil) return NextResponse.redirect(new URL('/api/auth/logout', request.url))
+
+  if (profil.must_change_password && jalur !== '/ganti-sandi') {
+    return NextResponse.redirect(new URL('/ganti-sandi', request.url))
+  }
+
+  const rumah = profil.role === 'GURU' ? '/guru' : '/siswa'
+
+  if (publik || jalur === '/ganti-sandi') {
+    if (jalur === '/ganti-sandi' && profil.must_change_password) return response
+    return NextResponse.redirect(new URL(rumah, request.url))
+  }
+
+  if (profil.role === 'GURU' && jalur.startsWith('/siswa')) {
+    return NextResponse.redirect(new URL('/guru', request.url))
+  }
+  if (profil.role === 'SISWA' && jalur.startsWith('/guru')) {
+    return NextResponse.redirect(new URL('/siswa', request.url))
+  }
+
+  return response
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp|ico)$).*)'],
+}
