@@ -1,5 +1,28 @@
 @import "tailwindcss";
 
+@theme {
+  --color-kanvas: #F4F5F7;
+  --color-kartu: #FFFFFF;
+  --color-aksen: #8CE827;
+  --color-aksen-hover: #7BE11D;
+  --color-aksen-lembut: #ECFCCB;
+  --color-teks: #111827;
+  --color-teks-2: #6B7280;
+  --color-garis: #EAECF0;
+  --color-gelap: #0F172A;
+  --color-hadir: #22C55E;
+  --color-sakit: #A855F7;
+  --color-izin: #F59E0B;
+  --color-alpa: #EF4444;
+  --radius-kartu: 1rem;
+  --shadow-bento: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+}
+
 body {
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--color-kanvas);
+  color: var(--color-teks);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
 }

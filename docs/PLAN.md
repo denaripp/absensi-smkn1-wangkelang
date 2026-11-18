@@ -1128,3 +1128,63 @@ Gate lokal: `npm run uji` 20/20 pass, `tsc` 0, `eslint` 0, `next build` sukses d
 ### 13.4 Kondisi data saat ini
 
 Satu akun guru aktif: `identifier=198705122010011004`, `role=GURU`, `must_change_password=false`, sandi saat ini `GuruBaru#2026` (hasil uji ganti sandi). Belum ada kelas, siswa, mapel, atau sesi.
+
+## 14. Catatan Eksekusi Batch 5 (18 Nov 2026)
+
+Status: **selesai, gate hijau.** Dashboard guru jalan dengan data nyata dari DB, QR HMAC aktif, auto-Alpa terbukti.
+
+### 14.1 File yang dibuat
+
+| File | Isi |
+| :--- | :--- |
+| `src/app/globals.css` | Token `@theme` lengkap dari `docs/DESIGN.md` + kelas `.tabular` |
+| `src/app/layout.tsx` | Plus Jakarta Sans via `next/font/google`, `lang="id"`, tanpa query DB |
+| `src/app/(guru)/layout.tsx` | Shell di dalam `<Suspense>` supaya profil dinamis tidak memblokir prerender |
+| `src/components/ShellGuru.tsx` | Ambil profil guru (nama, NIP) lalu render Dock + TopBar + konten |
+| `src/components/Dock.tsx` | Rail ikon: Dashboard aktif, 4 menu lain `aria-disabled` + `title` (Batch 7), tombol keluar |
+| `src/components/TopBar.tsx` | Pil menu, kolom cari (disabled + alasan di `title`), lonceng, avatar inisial, tanggal WIB |
+| `src/components/PanelSesi.tsx` | Gabungan Kartu Sesi + QR + metrik 2x2 + tabel siswa live + aksi tutup/manual |
+| `src/components/GrafikTren.tsx` | Batang Sen–Jum, satu batang highlight + tooltip hitam, state kosong jujur |
+| `src/components/KartuIdentitasGuru.tsx` | Kartu gelap `#0F172A` berisi NIP, nama, jurusan, jumlah mapel |
+| `src/components/AksiTombol.tsx` | Tombol tanpa backend tetap bisa diklik, memunculkan alasan |
+| `src/hooks/useKehadiranLive.ts` | Langganan `postgres_changes` pada `attendance_logs` + delta state |
+| `src/lib/format.ts` | `jamWIB`, `tanggalPanjangWIB`, `tanggalWIB`, `sapaanWIB`, `tanggalTujuhHariLaluWIB` |
+| `src/app/(guru)/guru/page.tsx` | Dashboard: greeting, sesi aktif, roster, metrik, tren 7 hari, ringkasan rekap |
+| `src/app/api/sesi/buka/route.ts` | Validasi mapel milik guru + kelas ada, insert sesi, 409 untuk sesi ganda |
+| `src/app/api/qr/route.ts` | Token HMAC + `cache-control: no-store`, sesi harus ACTIVE milik guru |
+| `src/app/api/sesi/tutup/route.ts` | Auto-Alpa semua siswa aktif tanpa log, lalu `status=CLOSED` |
+| `src/app/api/sesi/manual/route.ts` | Upsert `HADIR_MANUAL` / `SAKIT` / `IZIN`, notes maks 200 char, validasi kelas |
+
+### 14.2 Bukti gate (curl + query, server `:3100`)
+
+| # | Uji | Hasil |
+| :--- | :--- | :--- |
+| 1 | Login guru | `200` |
+| 2 | `GET /guru` | `200`, 40.289 byte, memuat `Pemrograman Web`, `Munculkan QR Code`, `XII RPL 1` |
+| 3 | `POST /api/sesi/buka` | `200 {"sessionId":"2d2e25ad-…"}` |
+| 4 | Buka sesi lagi (kelas sama) | `409` (constraint `sessions_satu_aktif_per_kelas`) |
+| 5 | `GET /api/qr` | `{"token":"2d2e25ad-….119667515.7nWhV…","expiresInMs":10735}` + `cache-control: no-store` |
+| 6 | `GET /guru` saat sesi aktif | `200`, memuat `Sesi Aktif`, `Scan via HP Siswa`, `Tutup Sesi`, `Ahmad Fauzi`, `0/5 sudah absen` |
+| 7 | `POST /api/sesi/manual` (SAKIT) | `200 {"ok":true,"status":"SAKIT"}` |
+| 8 | `POST /api/sesi/tutup` | `200 {"ok":true,"alpa":4,"totalSiswa":5}` |
+| 9 | Tutup sesi lagi | `409` |
+| 10 | `GET /guru` setelah tutup | `200`, `Belum ada sesi aktif` muncul, tombol `Munculkan QR Code` kembali |
+| 11 | `POST /api/sesi/buka` tanpa login | `401` |
+| 12 | `GET /api/qr` tanpa login | `401` |
+
+DB: `sessions=1` (CLOSED), `attendance_logs=5` → `ALPA=4`, `SAKIT=1`. Jumlah log = jumlah siswa, tidak ada yang tertinggal.
+
+Gate lokal: `npm run uji` 20/20, `tsc` 0, `eslint` 0, `next build` sukses. Rute baru: `/guru` (partial prerender), `/api/qr`, `/api/sesi/{buka,tutup,manual}`.
+
+### 14.3 Deviasi dari rencana awal
+
+1. **Komponen digabung.** Plan memisah `KartuSesi`, `TampilanQR`, `MetrikBento`, `TabelSiswaLive`. Semua digabung ke `PanelSesi.tsx` karena berbagi satu state (token QR, siklus rotasi, peta status live, aksi). Memisahnya justru menambah prop-drilling tanpa manfaat.
+2. **`useKehadiranLive` memakai pola render-phase reset**, bukan `setState` di badan effect. Aturan `react-hooks/set-state-in-effect` menolak bentuk pertama (error lint).
+3. **`Date.now()` dipindah ke helper** `tanggalTujuhHariLaluWIB()` di `src/lib/format.ts`. Aturan `react-hooks/purity` menolak pemanggilan impure langsung di badan komponen.
+4. **Shell guru dibungkus `<Suspense>`.** Layout membaca cookie/profil (dinamis), sehingga tanpa Suspense build gagal pada prerender `cacheComponents`.
+5. **Menu yang belum ada dirender `aria-disabled` + `title`**, dan kolom pencarian `disabled` dengan alasan di `title` — sesuai aturan UI proyek, bukan tombol mati tanpa keterangan.
+6. **Realtime belum diuji end-to-end.** Hook terpasang dan halaman tersubscribe, tapi bukti payload masuk butuh dua tab browser + akun siswa; itu dijadwalkan di Gate 6/8.
+
+### 14.4 Data yang ditinggalkan (bukan sampah, dipakai batch berikut)
+
+1 kelas `XII RPL 1` (Rekayasa Perangkat Lunak), 1 mapel `Pemrograman Web & Perangkat Bergerak`, 1 jadwal (Selasa jam ke-3, 07:30–09:00), 5 siswa `0061234501`–`0061234505` (sandi = NISN, `must_change_password=false`), 1 sesi CLOSED berisi 1 SAKIT + 4 ALPA. Skrip penyiapnya dihapus setelah dipakai; `scripts/` kini hanya berisi `cek-koneksi.ts`.
