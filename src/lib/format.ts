@@ -1,7 +1,8 @@
 const WIB = 'Asia/Jakarta'
 
 export function jamWIB(waktu: Date | string) {
-  return new Intl.DateTimeFormat('id-ID', {
+  // en-GB memberi pemisah titik dua (HH:mm:ss); id-ID memakai titik.
+  return new Intl.DateTimeFormat('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -40,4 +41,12 @@ export function sapaanWIB(waktu: Date | string = new Date()) {
 // Dipakai Server Component: Date.now() tidak boleh dipanggil langsung di badan render.
 export function tanggalTujuhHariLaluWIB() {
   return tanggalWIB(new Date(Date.now() - 6 * 86_400_000))
+}
+
+// 1 = Senin ... 7 = Minggu, dihitung menurut zona sekolah.
+export function hariKeWIB(waktu: Date | string = new Date()) {
+  const nama = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: WIB }).format(
+    new Date(waktu),
+  )
+  return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(nama) + 1
 }

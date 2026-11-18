@@ -1188,3 +1188,62 @@ Gate lokal: `npm run uji` 20/20, `tsc` 0, `eslint` 0, `next build` sukses. Rute 
 ### 14.4 Data yang ditinggalkan (bukan sampah, dipakai batch berikut)
 
 1 kelas `XII RPL 1` (Rekayasa Perangkat Lunak), 1 mapel `Pemrograman Web & Perangkat Bergerak`, 1 jadwal (Selasa jam ke-3, 07:30–09:00), 5 siswa `0061234501`–`0061234505` (sandi = NISN, `must_change_password=false`), 1 sesi CLOSED berisi 1 SAKIT + 4 ALPA. Skrip penyiapnya dihapus setelah dipakai; `scripts/` kini hanya berisi `cek-koneksi.ts`.
+
+## 15. Catatan Eksekusi Batch 6 (18 Nov 2026)
+
+Status: **selesai, gate hijau.** Siswa bisa masuk, melihat sesi aktif, memindai QR, dan absensi tercatat `HADIR` dengan device lock aktif.
+
+### 15.1 File yang dibuat
+
+| File | Isi |
+| :--- | :--- |
+| `src/app/(siswa)/layout.tsx` | Ambil profil + kelas + status kunci perangkat, lalu render shell |
+| `src/components/ShellSiswa.tsx` | Header profil (inisial, nama, NISN, kelas), badge "Perangkat Terkunci (HP Ini)", tombol keluar |
+| `src/app/(siswa)/siswa/page.tsx` | Bento siswa: sesi aktif, metrik pribadi 2x2, jadwal hari ini, 5 riwayat terakhir |
+| `src/components/PanelSesiSiswa.tsx` | Kartu sesi aktif hijau lime + tombol "Buka Kamera & Scan QR", atau pesan tenang saat kosong |
+| `src/components/ScannerQR.tsx` | Modal kamera `html5-qrcode` (`facingMode: environment`, `qrbox 250`, `fps 10`), kirim token ke server, popup `Hadir — HH:mm:ss WIB` |
+| `src/components/AbsenDariToken.tsx` | Jalur cadangan `?token=` untuk HP yang kameranya bermasalah |
+| `src/app/(siswa)/siswa/scan/page.tsx` | Halaman `/siswa/scan?token=…` |
+| `src/hooks/useSesiAktif.ts` | Langganan `postgres_changes` tabel `sessions` per kelas → `router.refresh()` |
+| `src/app/api/absen/route.ts` | Verifikasi HMAC → sesi ACTIVE → siswa sekelas → device lock → insert `HADIR` (409 duplikat) |
+| `src/lib/format.ts` | Tambah `hariKeWIB()`; `jamWIB()` pindah ke locale `en-GB` |
+
+### 15.2 Bukti gate (curl + query, server `:3100`)
+
+| # | Uji | Hasil |
+| :--- | :--- | :--- |
+| 1 | Login guru | `{"ok":true,"role":"GURU"}` |
+| 2 | Buka sesi mapel lain di hari yang sama | `200 {"sessionId":"ac098a4d-…"}` (bukti constraint per-mapel, bukan per-kelas saja) |
+| 3 | `GET /api/qr` | token `ac098a4d-….…` |
+| 4 | Login siswa `0061234501` HP pertama | `200 {"ok":true,"role":"SISWA"}`, device terkunci |
+| 5 | `POST /api/absen` token valid | `200 {"status":"HADIR","jam":"21:45:10"}` |
+| 6 | Absen ulang | `409 {"error":"kamu sudah absen di sesi ini"}` |
+| 7 | Absen dari HP berbeda | `403 {"error":"perangkat berbeda. Hubungi guru untuk reset kunci HP"}` |
+| 8 | Token didiamkan 33 detik lalu dipakai | `400 {"error":"QR kedaluwarsa, minta guru tampilkan ulang"}` |
+| 9 | `GET /siswa` | `200`, 23.278 byte, memuat `Sesi Aktif`, `Basis Data`, `Rahmat`, `Hadir`, `Jadwal Hari Ini`, `Riwayat Presensi Terakhir`, `Perangkat Terkunci`, `0061234501`, `XII RPL 1` |
+| 10 | `GET /siswa/scan?token=…` | `200`, memuat `Presensi via Tautan Token` |
+| 11 | Siswa membuka `/guru` | `307`, `location: /siswa` |
+| 12 | `POST /api/sesi/tutup` | `{"ok":true,"alpa":4,"totalSiswa":5}` |
+
+DB sesi `ac098a4d-…`: `HADIR=1`, `ALPA=4` — jumlah log = 5 = jumlah siswa.
+
+Gate lokal: `npm run uji` 20/20, `tsc` 0, `eslint` 0, `next build` sukses. Rute baru: `/siswa` (ƒ), `/siswa/scan` (ƒ), `/api/absen` (ƒ).
+
+### 15.3 Deviasi dari rencana awal
+
+1. **`jamWIB` pindah ke locale `en-GB`.** Uji nyata mengembalikan `21.45.10` (id-ID memakai titik), padahal PRD minta `07:14:02`. Diperbaiki, bukan dibiarkan.
+2. **Nama guru dibaca lewat admin client di server.** Policy `users_baca` hanya mengizinkan siswa membaca barisnya sendiri, jadi join nama guru mustahil dari browser. Query tetap di server, tidak ada key yang bocor ke client.
+3. **`useSesiAktif` hanya memicu `router.refresh()`**, tidak menyimpan state sesi di client. Server tetap sumber kebenaran; realtime cuma pemicu render ulang.
+4. **`ScannerQR` mendefinisikan fungsi kirim di dalam `useEffect`** agar `react-hooks/exhaustive-deps` bersih; tidak ada `eslint-disable`.
+5. **`/siswa` sepenuhnya dinamis (ƒ)**, bukan partial prerender, karena layout membaca cookie lalu langsung merender data.
+6. **Uji butuh mapel kedua.** Constraint unik `(class_id, subject_id, session_date)` menolak sesi mapel yang sama di hari yang sama, jadi dibuat mapel `Basis Data` untuk menguji ulang alur penuh.
+
+### 15.4 Yang belum dibuktikan
+
+1. **Realtime belum diuji end-to-end.** Hook siswa dan guru terpasang dan halaman tersubscribe, tapi bukti payload masuk butuh dua tab browser dengan dua akun. Dijadwalkan di Gate 8.
+2. **Kamera belum diuji di perangkat nyata.** Kamera laptop ini rusak (gambar hitam), jadi jalur `html5-qrcode` baru diverifikasi secara build + alur API. Uji visual kamera harus dari HP.
+3. **Rate limit `POST /api/absen` belum ada** — dijadwalkan di Batch 8.
+
+### 15.5 Kondisi data
+
+2 mapel (`Pemrograman Web & Perangkat Bergerak`, `Basis Data`), 5 siswa, 1 kelas, 1 jadwal, 2 sesi CLOSED. Log: sesi pertama 1 SAKIT + 4 ALPA; sesi kedua 1 HADIR + 4 ALPA. Siswa `0061234501` perangkatnya terkunci ke `aaaaaaaa-1111-4111-8111-111111111111`; siswa `0061234502` terkunci ke `bbbbbbbb-2222-4222-8222-222222222222` (dipakai untuk uji token kedaluwarsa).
