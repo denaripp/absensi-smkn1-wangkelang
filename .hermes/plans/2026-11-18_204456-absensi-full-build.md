@@ -1366,3 +1366,39 @@ Audit layout via Chromium CDP (`scrollWidth` vs `clientWidth`, harus sama):
 1. **Kamera asli** — hardware laptop rusak; jalur `html5-qrcode` hanya terbukti lewat build + alur API + fallback `/siswa/scan?token=`.
 2. **Rate limit terdistribusi** — perlu store bersama kalau deploy multi-instance.
 3. **Audit log untuk CRUD kelas/mapel** — belum ada; hanya device lock yang ber-audit.
+
+## 18. Perbaikan: `unstable value Date.now()` di `/siswa` (18 Nov 2026)
+
+Gejala dari `npm run dev`:
+
+```
+## Error Type
+Blocking Route
+Route "/siswa": Next.js encountered the unstable value `Date.now()` while prerendering.
+    at LayoutSiswa
+```
+
+Halaman **tetap membalas `200`** dan isinya benar (`Jadwal Hari Ini`, `Metrik Kehadiranmu` ada). Jadi bug ini tidak pernah terlihat oleh `curl -o /dev/null -w %{http_code}` — hanya muncul sebagai overlay browser dan satu baris `ERROR` di `.next/dev/logs/next-development.log` per request yang memicu prerender ulang.
+
+### 18.1 Penyebab sebenarnya (dibuktikan A/B di `next start`, bukan dugaan)
+
+Komponen async pembaca cookie/DB di layout (`ShellGuru`, `IsiSiswa`) tidak pernah menyatakan diri request-time. `cacheComponents` tetap menjalankan satu pass prerender; di dalamnya `@supabase/auth-js` memanggil `Date.now()` untuk validasi token → Next mencatat error. `<Suspense>` saja tidak cukup: layout siswa sudah di-Suspense dan error tetap muncul tiap request.
+
+### 18.2 Bukti A/B (prod `next start`, hitung `grep -c "unstable value"` di log)
+
+| Varian | Hasil |
+| :--- | :--- |
+| Sebelum perbaikan, 4 request (`/siswa` 2×, `/guru` 2×) | 4 error, halaman tetap `200` |
+| Proxy dimatikan lewat flag uji (`/siswa` 2×) | 2 error → bukan proxy |
+| `hariKeWIB()` dijadikan konstanta `3` | error tetap → bukan helper waktu |
+| Setelah `await connection()` di `ShellGuru` + `IsiSiswa` | `/siswa` 2×, `/guru` 2×, `/guru/murid` 1× → **0 error**, semua `200` |
+| `next dev` setelah perbaikan (`/siswa`, `/guru`) | **0 error** |
+
+### 18.3 Perbaikan final
+
+1. `src/components/ShellGuru.tsx`: `await connection()` sebagai baris pertama.
+2. `src/app/(siswa)/layout.tsx`: dipecah jadi `IsiSiswa` async + `<Suspense>`, dan `IsiSiswa` diawali `await connection()`.
+
+### 18.4 Aturan untuk agent berikutnya
+
+Setiap komponen async yang membaca cookie/DB di dalam layout **wajib** `await connection()` di baris pertama **dan** dibungkus `<Suspense>` di layout-nya. Bukti verifikasi = `grep -c "unstable value"` di log server (`0`), bukan status HTTP, karena halaman tetap `200` walau error tercatat.

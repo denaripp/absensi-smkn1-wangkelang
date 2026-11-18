@@ -1,9 +1,11 @@
+import { connection } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { tanggalPanjangWIB } from '@/lib/format'
 import Dock from '@/components/Dock'
 import TopBar from '@/components/TopBar'
 
 export default async function ShellGuru({ children }: { children: React.ReactNode }) {
+  await connection() // wajib: layout request-time; auth-js + tanggalPanjangWIB memakai jam
   const supabase = await createServerSupabase()
   const {
     data: { user },
