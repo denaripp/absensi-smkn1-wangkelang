@@ -1022,3 +1022,43 @@ Script menambah dua cek di luar rencana awal: roundtrip tulis+hapus sebagai admi
 ### 11.4 Yang belum ada (memang jadwalnya nanti)
 
 Belum ada data apa pun (0 kelas, 0 user, 0 sesi) — itu Batch 8 (`seed-demo.ts`). Belum ada endpoint maupun halaman yang memakai tabel ini (Batch 4 ke atas). Belum ada uji RLS dengan JWT siswa/guru sungguhan; uji itu butuh akun nyata dan terjadi di Gate 4/6.
+
+## 12. Catatan Eksekusi Batch 3 (18 Nov 2026)
+
+Status: **selesai, gate hijau.** 20 test lulus, `tsc` exit 0, `build` exit 0.
+
+### 12.1 File yang dibuat
+
+| File | Isi |
+| :--- | :--- |
+| `src/lib/qr.ts` | `BUCKET_MS = 15_000`, `buatToken`, `verifikasiToken` (HMAC sha256 base64url, toleransi 1 bucket) |
+| `src/lib/device.ts` | `buatFingerprint` (sha256 64 hex), `periksaDevice` (LOCK / OK / MISMATCH / TIDAK_ADA + audit) |
+| `src/lib/rekap.ts` | `hitungMetrik` (persen 1 desimal, nol pembagian aman), `trenMingguan` (urut Sen–Jum, Sabtu/Minggu dibuang) |
+| `src/lib/supabase/server.ts` | SSR client berbasis cookie |
+| `src/lib/supabase/browser.ts` | `createBrowserSupabase` (untuk realtime di client) |
+| `src/lib/supabase/admin.ts` | service role, tanpa persist session |
+| `src/lib/auth.ts` | `requireRole('GURU')` / `requireRole('SISWA')` → `{ profil, galat }`, 401/403 berupa `NextResponse` siap kirim |
+| `tests/qr.test.ts` | 7 test |
+| `tests/device.test.ts` | 6 test (fingerprint + `periksaDevice` dengan admin palsu) |
+| `tests/rekap.test.ts` | 7 test |
+
+### 12.2 Bukti gate
+
+```
+npm run uji    → # tests 20 | # pass 20 | # fail 0 | exit 0
+tsc --noEmit   → exit 0
+eslint .       → exit 0
+next build     → exit 0, "✓ Compiled successfully", rute ƒ /
+```
+
+### 12.3 Deviasi dari rencana awal
+
+1. **Jumlah test 20, bukan 9.** Plan hanya menyebut 4 test QR, 3 device, 5 rekap. Test ditambah pada jalur yang menyangkut keamanan (uuid beda walau fingerprint sama, token format ngawur, status absen tak dikenal) karena jalur itu yang menentukan bisa-tidaknya titip absen.
+2. **`periksaDevice` diuji dengan admin palsu** (objek minimal `from().select().eq().single()`, `update().eq()`, `insert()`) — bukan Supabase sungguhan. Tujuannya menguji logika LOCK/OK/MISMATCH tanpa menyentuh DB. Uji ke DB nyata terjadi di Gate 4/6.
+3. **Tanda tangan fungsi rekap berbeda dari plan.** Plan menulis `trenMingguan(logs, sesi)`; implementasi `trenMingguan(perHari: {tanggal, hadir, total}[])` — agregasi per tanggal dilakukan pemanggil (SQL `group by`), fungsi tetap murni dan mudah diuji.
+4. **Bug di test pertama, bukan di kode.** Run pertama 19/20: asersi "toleransi 15 detik" memakai timestamp yang jatuh 10 detik di dalam bucket, sehingga +20 detik melompati dua bucket. Asersi diperbaiki memakai timestamp tepat di awal bucket. `verifikasiToken` tidak diubah.
+5. `src/lib/auth.ts` memakai `NextResponse` sehingga hanya bisa dipakai di route handler, bukan Server Component. Guard halaman tetap di `src/proxy.ts` (Batch 4).
+
+### 12.4 Yang belum ada
+
+Belum ada route handler, `src/proxy.ts`, halaman, atau komponen. `requireRole` belum dipanggil di mana pun — pemakai pertamanya adalah Batch 4.
