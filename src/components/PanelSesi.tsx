@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { QRCodeSVG } from 'qrcode.react'
 import { useKehadiranLive } from '@/hooks/useKehadiranLive'
+import WidgetSiswaBaruHadir from '@/components/WidgetSiswaBaruHadir'
 
 type Sesi = { id: string; mapel: string; kelas: string; mulai: string }
 type Pilihan = { id: string; nama: string }
@@ -164,8 +165,8 @@ export default function PanelSesi({
           {belumAdaData ? (
             <p className="rounded-xl bg-kanvas px-4 py-3 text-sm text-teks-2">
               {mapelList.length === 0
-                ? 'Belum ada mata pelajaran yang kamu ampu. Tambah lewat menu Mapel (dibangun di Batch 7).'
-                : 'Belum ada kelas di sekolah. Tambah lewat menu Kelas (dibangun di Batch 7).'}
+                ? 'Belum ada mata pelajaran yang kamu ampu. Tambah lewat menu Mapel.'
+                : 'Belum ada kelas di sekolah. Tambah lewat menu Kelas.'}
             </p>
           ) : (
             <>
@@ -252,6 +253,9 @@ export default function PanelSesi({
                 <p className="text-[11px] text-teks-2">siswa</p>
               </div>
             ))}
+          </div>
+          <div className="md:col-span-2">
+            <WidgetSiswaBaruHadir roster={roster} status={status} />
           </div>
         </div>
       )}

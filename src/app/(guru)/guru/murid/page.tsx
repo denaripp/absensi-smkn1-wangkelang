@@ -37,6 +37,7 @@ export default async function HalamanMurid() {
     id: s.id,
     nisn: s.identifier,
     nama: s.full_name,
+    classId: s.class_id ?? '',
     kelas: namaKelas.get(s.class_id ?? '') ?? '-',
     terkunci: Boolean(s.device_lock_id),
   }))

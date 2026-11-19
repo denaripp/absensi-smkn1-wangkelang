@@ -1,8 +1,8 @@
 import { connection } from 'next/server'
+import Link from 'next/link'
 import PanelSesi from '@/components/PanelSesi'
 import GrafikTren from '@/components/GrafikTren'
 import KartuIdentitasGuru from '@/components/KartuIdentitasGuru'
-import AksiTombol from '@/components/AksiTombol'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { jamWIB, sapaanWIB, tanggalTujuhHariLaluWIB } from '@/lib/format'
 import { trenMingguan } from '@/lib/rekap'
@@ -142,23 +142,26 @@ export default async function DashboardGuru() {
 
           <section className="rounded-2xl bg-kartu p-5 shadow-bento">
             <h2 className="text-base font-semibold">Aksi Cepat</h2>
-            <p className="mb-3 text-xs text-teks-2">
-              Tombol yang belum punya backend akan menjelaskan alasannya saat diklik.
-            </p>
+            <p className="mb-3 text-xs text-teks-2">Pintasan menu operasional kelas.</p>
             <div className="space-y-2">
-              <AksiTombol
-                label="Hadir Manual (siswa tanpa HP)"
-                alasan="Pakai kolom 'Ubah' pada tabel siswa di sesi aktif — cara ini sudah berfungsi."
-                varian="gelap"
-              />
-              <AksiTombol
-                label="Ekspor Laporan Excel"
-                alasan="Ekspor .xlsx dibangun di Batch 7 (menu Rekap)."
-              />
-              <AksiTombol
-                label="Kelola Data Murid"
-                alasan="CRUD murid + upload Excel dibangun di Batch 7."
-              />
+              <Link
+                href="/guru/rekap"
+                className="block w-full rounded-full bg-aksen px-4 py-2.5 text-center text-xs font-bold text-gelap transition hover:bg-aksen-hover"
+              >
+                Ekspor Laporan Excel
+              </Link>
+              <Link
+                href="/guru/murid"
+                className="block w-full rounded-full border border-garis px-4 py-2.5 text-center text-xs font-semibold text-teks transition hover:bg-kanvas"
+              >
+                Kelola Data Murid
+              </Link>
+              <Link
+                href="/guru/mapel"
+                className="block w-full rounded-full border border-garis px-4 py-2.5 text-center text-xs font-semibold text-teks transition hover:bg-kanvas"
+              >
+                Kelola Mapel & Jadwal
+              </Link>
             </div>
           </section>
 

@@ -3,14 +3,31 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-type Siswa = { id: string; nisn: string; nama: string; kelas: string; terkunci: boolean }
+type Siswa = {
+  id: string
+  nisn: string
+  nama: string
+  classId: string
+  kelas: string
+  terkunci: boolean
+}
 type Kelas = { id: string; nama: string }
 
-export default function PanelMurid({ siswaList, kelasList }: { siswaList: Siswa[]; kelasList: Kelas[] }) {
+export default function PanelMurid({
+  siswaList,
+  kelasList,
+}: {
+  siswaList: Siswa[]
+  kelasList: Kelas[]
+}) {
   const router = useRouter()
   const [nisn, setNisn] = useState('')
   const [nama, setNama] = useState('')
   const [classId, setClassId] = useState(kelasList[0]?.id ?? '')
+  const [filterKelas, setFilterKelas] = useState('')
+  const [editSiswa, setEditSiswa] = useState<Siswa | null>(null)
+  const [editNama, setEditNama] = useState('')
+  const [editClassId, setEditClassId] = useState('')
   const [pesan, setPesan] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const berkasRef = useRef<HTMLInputElement>(null)
@@ -67,6 +84,36 @@ export default function PanelMurid({ siswaList, kelasList }: { siswaList: Siswa[
     router.refresh()
   }
 
+  function mulaiEdit(s: Siswa) {
+    setEditSiswa(s)
+    setEditNama(s.nama)
+    setEditClassId(s.classId || (kelasList[0]?.id ?? ''))
+    setPesan(null)
+  }
+
+  async function simpanEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editSiswa) return
+    setLoading(true)
+    setPesan(null)
+
+    const res = await fetch(`/api/siswa/${editSiswa.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ nama: editNama, classId: editClassId }),
+    })
+    const data = (await res.json()) as { error?: string }
+    setLoading(false)
+
+    if (!res.ok) {
+      setPesan(data.error ?? 'gagal mengubah data murid')
+      return
+    }
+    setEditSiswa(null)
+    setPesan(`Data ${editNama} berhasil diperbarui.`)
+    router.refresh()
+  }
+
   async function resetDevice(id: string, namaSiswa: string) {
     if (!window.confirm(`Reset kunci HP ${namaSiswa}? Siswa bisa login dari HP baru setelah ini.`)) return
     const res = await fetch('/api/reset-device', {
@@ -87,8 +134,66 @@ export default function PanelMurid({ siswaList, kelasList }: { siswaList: Siswa[
     if (res.ok) router.refresh()
   }
 
+  const siswaTampil = filterKelas
+    ? siswaList.filter((s) => s.classId === filterKelas || s.kelas === filterKelas)
+    : siswaList
+
   return (
     <div className="space-y-3">
+      {/* Form Edit Modal / Card */}
+      {editSiswa && (
+        <section className="rounded-2xl border-2 border-aksen bg-kartu p-5 shadow-bento">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold">Ubah Data Siswa ({editSiswa.nisn})</h2>
+            <button
+              type="button"
+              onClick={() => setEditSiswa(null)}
+              className="text-xs text-teks-2 hover:underline"
+            >
+              Tutup
+            </button>
+          </div>
+          <form onSubmit={simpanEdit} className="mt-3 grid gap-2 md:grid-cols-3">
+            <input
+              value={editNama}
+              onChange={(e) => setEditNama(e.target.value)}
+              placeholder="Nama lengkap"
+              required
+              className="rounded-xl border border-garis px-3 py-2 text-sm md:col-span-2"
+            />
+            <select
+              value={editClassId}
+              onChange={(e) => setEditClassId(e.target.value)}
+              required
+              className="rounded-xl border border-garis px-3 py-2 text-sm"
+            >
+              {kelasList.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.nama}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-2 md:col-span-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className="rounded-full bg-aksen px-5 py-2 text-xs font-bold text-gelap disabled:opacity-60"
+              >
+                {loading ? 'Menyimpan…' : 'Simpan Perubahan'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditSiswa(null)}
+                className="rounded-full border border-garis px-4 py-2 text-xs font-semibold text-teks-2"
+              >
+                Batal
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
+
+      {/* Tambah Murid */}
       <section className="rounded-2xl bg-kartu p-5 shadow-bento">
         <h2 className="text-base font-semibold">Tambah murid</h2>
         <p className="text-xs text-teks-2">
@@ -133,7 +238,9 @@ export default function PanelMurid({ siswaList, kelasList }: { siswaList: Siswa[
           </button>
 
           <label className="md:col-span-3">
-            <span className="text-xs font-semibold text-teks-2">atau unggah Excel (.xlsx, kolom nisn/nama/kelas)</span>
+            <span className="text-xs font-semibold text-teks-2">
+              atau unggah Excel (.xlsx, kolom nisn/nama/kelas)
+            </span>
             <input
               ref={berkasRef}
               type="file"
@@ -150,7 +257,31 @@ export default function PanelMurid({ siswaList, kelasList }: { siswaList: Siswa[
         {pesan && <p className="mt-2 text-xs text-teks">{pesan}</p>}
       </section>
 
+      {/* Tabel Murid & Filter Kelas */}
       <section className="overflow-x-auto rounded-2xl bg-kartu shadow-bento">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-garis p-4">
+          <div>
+            <h3 className="text-sm font-semibold">Daftar Siswa</h3>
+            <p className="text-xs text-teks-2">Menampilkan {siswaTampil.length} siswa</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="filter-kelas-select" className="text-xs font-semibold text-teks-2">Filter Kelas:</label>
+            <select
+              id="filter-kelas-select"
+              value={filterKelas}
+              onChange={(e) => setFilterKelas(e.target.value)}
+              className="rounded-xl border border-garis bg-kartu px-3 py-1.5 text-xs font-medium"
+            >
+              <option value="">Semua Kelas ({siswaList.length})</option>
+              {kelasList.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.nama}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         <table className="w-full text-left text-sm">
           <thead className="bg-kanvas text-[11px] uppercase tracking-wide text-teks-2">
             <tr>
@@ -162,14 +293,14 @@ export default function PanelMurid({ siswaList, kelasList }: { siswaList: Siswa[
             </tr>
           </thead>
           <tbody>
-            {siswaList.length === 0 && (
+            {siswaTampil.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-xs text-teks-2">
-                  Belum ada siswa di kelas yang kamu ampu.
+                  Belum ada siswa di kelas ini.
                 </td>
               </tr>
             )}
-            {siswaList.map((s) => (
+            {siswaTampil.map((s) => (
               <tr key={s.id} className="border-t border-garis">
                 <td className="px-4 py-2.5 font-medium">{s.nama}</td>
                 <td className="tabular px-4 py-2.5 text-xs text-teks-2">{s.nisn}</td>
@@ -180,11 +311,18 @@ export default function PanelMurid({ siswaList, kelasList }: { siswaList: Siswa[
                   </span>
                 </td>
                 <td className="px-4 py-2.5">
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => mulaiEdit(s)}
+                      className="text-xs font-semibold text-teks underline hover:text-hadir"
+                    >
+                      Edit
+                    </button>
                     <button
                       type="button"
                       onClick={() => resetDevice(s.id, s.nama)}
-                      className="text-xs font-semibold text-teks underline"
+                      className="text-xs font-semibold text-teks-2 underline hover:text-teks"
                     >
                       Reset Kunci HP
                     </button>

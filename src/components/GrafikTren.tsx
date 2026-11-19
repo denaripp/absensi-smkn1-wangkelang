@@ -27,10 +27,7 @@ export default function GrafikTren({ data }: { data: TitikTren[] }) {
           </p>
         </div>
         <div className="flex gap-1 rounded-full bg-kanvas p-1 text-[11px] font-semibold">
-          <span className="rounded-full bg-gelap px-3 py-1 text-white">Minggu</span>
-          <span className="px-3 py-1 text-teks-2" title="Tampilan bulanan dibangun setelah modul rekap">
-            Bulan
-          </span>
+          <span className="rounded-full bg-gelap px-3 py-1 text-white">Mingguan</span>
         </div>
       </header>
 
