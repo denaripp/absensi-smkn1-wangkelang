@@ -74,13 +74,15 @@ export default function ModalQRPembesar({
 
   if (mode === 'normal') return null
 
-  // MODE 1: QR MENGAMBANG (PICTURE-IN-PICTURE DI SUDUT BAWAH)
+  // ==========================================
+  // MODE 1: QR MENGAMBANG (PICTURE-IN-PICTURE)
+  // ==========================================
   if (mode === 'mengambang') {
     return (
-      <div className="fixed bottom-6 right-6 z-50 w-72 rounded-2xl border border-garis bg-kartu p-4 shadow-2xl transition-all animate-in slide-in-from-bottom-4">
+      <div className="fixed bottom-6 right-6 z-50 w-72 rounded-2xl border border-garis bg-kartu p-3.5 shadow-2xl transition-all animate-in slide-in-from-bottom-4">
         <div className="flex items-center justify-between border-b border-garis pb-2">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-bold leading-tight text-teks-1">{sesi.mapel}</p>
+          <div className="min-w-0 flex-1 pr-2">
+            <p className="truncate text-xs font-bold text-teks-1">{sesi.mapel}</p>
             <p className="text-[10px] text-teks-2">Kelas {sesi.kelas} · QR Aktif</p>
           </div>
 
@@ -119,7 +121,7 @@ export default function ModalQRPembesar({
                 <FontAwesomeIcon icon={faUsers} className="text-[10px]" />
                 {metrik.hadir}/{metrik.total} hadir
               </span>
-              <span className="tabular font-mono font-bold text-teks-2">{sisa}s</span>
+              <span className="tabular font-mono font-bold text-emerald-600">{sisa}s</span>
             </div>
 
             <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-garis">
@@ -134,129 +136,126 @@ export default function ModalQRPembesar({
     )
   }
 
-  // MODE 2: MODAL PROYEKTOR JUMBO (LAYAR PENUH)
+  // ==========================================
+  // MODE 2: MODAL PROYEKTOR JUMBO (PROPORSIONAL)
+  // ==========================================
   const persenHadir = metrik.total > 0 ? Math.round((metrik.hadir / metrik.total) * 100) : 0
 
   return (
     <div
       ref={modalRef}
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 ${
-        isFullscreen ? 'bg-kanvas' : 'bg-black/85 backdrop-blur-md'
+      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 ${
+        isFullscreen ? 'bg-kanvas' : 'bg-black/80 backdrop-blur-md'
       }`}
       onClick={(e) => {
         if (e.target === e.currentTarget && !isFullscreen) onTutup()
       }}
     >
-      <div className="relative flex w-full max-w-2xl flex-col items-center rounded-3xl border border-garis bg-kartu p-6 shadow-2xl sm:p-8">
-        {/* Header Modal: Tipografi Elegan Tanpa Pill Slop */}
-        <div className="flex w-full items-start justify-between border-b border-garis pb-4">
+      <div className="relative flex max-h-[94vh] w-full max-w-lg flex-col items-center overflow-y-auto rounded-3xl border border-garis bg-kartu p-5 shadow-2xl sm:p-6">
+        {/* Header Modal */}
+        <div className="flex w-full items-start justify-between border-b border-garis pb-3">
           <div className="min-w-0 flex-1 pr-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
-              Mode Proyektor · Sesi Presensi Aktif
+            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+              Mode Proyektor · Presensi Siswa
             </p>
-            <h2 className="mt-1 truncate text-xl font-black leading-tight text-teks-1 sm:text-2xl">
+            <h2 className="mt-0.5 text-lg font-black leading-snug text-teks-1 sm:text-xl">
               {sesi.mapel}
             </h2>
-            <p className="mt-1 text-xs text-teks-2">
-              Kelas {sesi.kelas} · Dibuka {sesi.mulai} · SMK Negeri 1 Wangkelang
+            <p className="mt-0.5 text-xs text-teks-2">
+              Kelas {sesi.kelas} · Dibuka {sesi.mulai}
             </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          {/* Tombol Aksi Icon Ringkas (Hemat Ruang Horizontal) */}
+          <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
             <button
               type="button"
               onClick={() => onUbahMode('mengambang')}
-              title="Pindahkan ke sudut layar (PiP)"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-garis bg-kanvas px-3 py-2 text-xs font-semibold text-teks-2 transition-all hover:bg-kartu hover:text-teks-1 active:scale-95"
+              title="Pindahkan ke mode mengambang (PiP)"
+              className="grid size-8 place-items-center rounded-xl border border-garis bg-kanvas text-teks-2 transition-all hover:bg-kartu hover:text-teks-1 active:scale-95"
             >
-              <FontAwesomeIcon icon={faUpRightAndDownLeftFromCenter} className="text-[11px]" />
-              <span className="hidden sm:inline">Mengambang</span>
+              <FontAwesomeIcon icon={faUpRightAndDownLeftFromCenter} className="text-xs" />
             </button>
 
             <button
               type="button"
               onClick={toggleFullscreen}
-              title={isFullscreen ? 'Keluar dari layar penuh (F)' : 'Layar penuh proyektor (F)'}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-garis bg-kanvas px-3 py-2 text-xs font-semibold text-teks-2 transition-all hover:bg-kartu hover:text-teks-1 active:scale-95"
+              title={isFullscreen ? 'Kecilkan Layar Penuh (F)' : 'Layar Penuh Proyektor (F)'}
+              className="grid size-8 place-items-center rounded-xl border border-garis bg-kanvas text-teks-2 transition-all hover:bg-kartu hover:text-teks-1 active:scale-95"
             >
-              <FontAwesomeIcon icon={isFullscreen ? faCompress : faTv} className="text-[11px]" />
-              <span className="hidden sm:inline">{isFullscreen ? 'Kecilkan' : 'Layar Penuh'}</span>
+              <FontAwesomeIcon icon={isFullscreen ? faCompress : faTv} className="text-xs" />
             </button>
 
             <button
               type="button"
               onClick={onTutup}
               title="Tutup (Esc)"
-              className="grid size-9 place-items-center rounded-xl border border-garis bg-kanvas text-teks-2 transition-all hover:bg-[#FEE2E2] hover:text-alpa active:scale-95"
+              className="grid size-8 place-items-center rounded-xl border border-garis bg-kanvas text-teks-2 transition-all hover:bg-[#FEE2E2] hover:text-alpa active:scale-95"
             >
-              <FontAwesomeIcon icon={faXmark} className="text-sm" />
+              <FontAwesomeIcon icon={faXmark} className="text-xs" />
             </button>
           </div>
         </div>
 
-        {/* Kotak QR Code Jumbo Kontras Tinggi */}
-        <div className="my-6 flex flex-col items-center">
-          <div className="grid size-[320px] place-items-center rounded-3xl border border-gray-100 bg-white p-5 shadow-xl sm:size-[380px] dark:border-zinc-800">
+        {/* QR Code Frame Berukuran Pas */}
+        <div className="my-3.5 flex flex-col items-center">
+          <div className="grid size-[260px] place-items-center rounded-2xl border border-gray-100 bg-white p-3.5 shadow-md sm:size-[290px] dark:border-zinc-800">
             {token ? (
               <QRCodeSVG
                 value={token}
-                size={isFullscreen ? 340 : 310}
+                size={isFullscreen ? 340 : 260}
                 level="M"
                 includeMargin={false}
               />
             ) : (
-              <span className="text-sm text-teks-2">Memuat kode QR…</span>
+              <span className="text-xs text-teks-2">Memuat kode QR…</span>
             )}
           </div>
 
-          {/* Indikator Hitung Mundur & Kalimat Petunjuk Resmi */}
-          <div className="mt-5 w-full max-w-sm text-center">
+          {/* Indikator Hitung Mundur & Progress Bar */}
+          <div className="mt-3.5 w-full max-w-xs text-center">
             <div className="flex items-center justify-between text-xs font-semibold">
-              <span className="text-teks-2">Pembaruan Kode Berikutnya</span>
+              <span className="text-teks-2">Kode berganti dalam</span>
               <span className="tabular font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                {String(sisa).padStart(2, '0')} Detik
+                {String(sisa).padStart(2, '0')} detik
               </span>
             </div>
 
-            <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-garis">
+            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-garis">
               <div
                 className="h-full rounded-full bg-emerald-600 transition-all duration-500"
                 style={{ width: `${(sisa / 15) * 100}%` }}
               />
             </div>
 
-            <p className="mt-2.5 text-xs text-teks-2">
-              Pindai kode QR menggunakan kamera ponsel atau aplikasi siswa untuk mencatat kehadiran.
+            <p className="mt-2 text-center text-xs text-teks-2">
+              Arahkan kamera ponsel siswa ke kode QR di atas
             </p>
           </div>
         </div>
 
-        {/* Footer Info Presensi Terpadu */}
-        <div className="flex w-full items-center justify-between rounded-2xl bg-kanvas px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="grid size-9 place-items-center rounded-xl bg-emerald-100 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-              <FontAwesomeIcon icon={faUsers} />
-            </span>
+        {/* Status Presensi Kompak */}
+        <div className="flex w-full items-center justify-between rounded-xl bg-kanvas px-4 py-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="grid size-7 place-items-center rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              <FontAwesomeIcon icon={faUsers} className="text-xs" />
+            </div>
             <div>
               <p className="text-xs font-bold text-teks-1">
-                {metrik.hadir} dari {metrik.total} Siswa Telah Hadir
+                {metrik.hadir} dari {metrik.total} Siswa Hadir
               </p>
-              <p className="text-[11px] text-teks-2">
-                Sinkronisasi data kehadiran berlangsung otomatis
-              </p>
+              <p className="text-[10px] text-teks-2">Tersinkronisasi otomatis</p>
             </div>
           </div>
 
-          <div className="text-right">
-            <span className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-              {persenHadir}% Terisi
-            </span>
-          </div>
+          <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+            {persenHadir}% Presensi
+          </span>
         </div>
 
-        {/* Baris Pintasan Keyboard Ringan */}
-        <p className="mt-3 text-[11px] text-teks-2">
-          Tekan <kbd className="rounded bg-kanvas px-1.5 py-0.5 font-mono text-[10px] font-semibold text-teks-1 border border-garis">F</kbd> untuk layar penuh · <kbd className="rounded bg-kanvas px-1.5 py-0.5 font-mono text-[10px] font-semibold text-teks-1 border border-garis">Esc</kbd> untuk menutup
+        {/* Hint Tombol Keyboard */}
+        <p className="mt-2 text-center text-[10px] text-teks-2">
+          Pintasan: <kbd className="rounded border border-garis bg-kanvas px-1 py-0.5 font-mono text-[9px] text-teks-1">F</kbd> layar penuh · <kbd className="rounded border border-garis bg-kanvas px-1 py-0.5 font-mono text-[9px] text-teks-1">Esc</kbd> tutup
         </p>
       </div>
     </div>
