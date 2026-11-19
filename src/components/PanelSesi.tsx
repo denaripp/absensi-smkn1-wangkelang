@@ -3,8 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { QRCodeSVG } from 'qrcode.react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faTv, faUpRightAndDownLeftFromCenter, faExpand } from '@fortawesome/free-solid-svg-icons'
 import { useKehadiranLive } from '@/hooks/useKehadiranLive'
 import WidgetSiswaBaruHadir from '@/components/WidgetSiswaBaruHadir'
+import ModalQRPembesar from '@/components/ModalQRPembesar'
 
 type Sesi = { id: string; mapel: string; kelas: string; mulai: string }
 type Pilihan = { id: string; nama: string }
@@ -38,6 +41,7 @@ export default function PanelSesi({
   const [loading, setLoading] = useState(false)
   const [token, setToken] = useState<string | null>(null)
   const [sisa, setSisa] = useState(0)
+  const [modeQR, setModeQR] = useState<'normal' | 'modal' | 'mengambang'>('normal')
 
   const status = useKehadiranLive(sesi?.id ?? null, statusAwal)
 
@@ -218,12 +222,22 @@ export default function PanelSesi({
       {sesi && (
         <div className="mt-4 grid gap-4 md:grid-cols-[auto_1fr]">
           <div className="rounded-2xl border border-garis p-4 text-center">
-            <div className="mx-auto grid size-[200px] place-items-center rounded-xl bg-white">
+            <div
+              onClick={() => setModeQR('modal')}
+              title="Klik untuk memperbesar QR (Mode Proyektor)"
+              className="group relative mx-auto grid size-[200px] cursor-pointer place-items-center rounded-xl bg-white shadow-sm transition-all hover:ring-4 hover:ring-aksen/30"
+            >
               {token ? (
                 <QRCodeSVG value={token} size={180} level="M" />
               ) : (
                 <span className="text-xs text-teks-2">memuat QR…</span>
               )}
+              <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-aksen px-3 py-1.5 text-xs font-bold text-gelap shadow-md">
+                  <FontAwesomeIcon icon={faExpand} className="text-[11px]" />
+                  Perbesar QR
+                </span>
+              </div>
             </div>
             <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-teks-2">
               Scan via HP Siswa
@@ -235,6 +249,25 @@ export default function PanelSesi({
                 className="h-full rounded-full bg-aksen transition-all duration-500"
                 style={{ width: `${(sisa / 15) * 100}%` }}
               />
+            </div>
+
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setModeQR('modal')}
+                className="inline-flex items-center gap-1 rounded-lg border border-garis bg-kanvas px-2.5 py-1 text-[11px] font-semibold text-teks-1 hover:bg-kartu active:scale-95"
+              >
+                <FontAwesomeIcon icon={faTv} className="text-[10px] text-aksen" />
+                Perbesar
+              </button>
+              <button
+                type="button"
+                onClick={() => setModeQR('mengambang')}
+                className="inline-flex items-center gap-1 rounded-lg border border-garis bg-kanvas px-2.5 py-1 text-[11px] font-semibold text-teks-1 hover:bg-kartu active:scale-95"
+              >
+                <FontAwesomeIcon icon={faUpRightAndDownLeftFromCenter} className="text-[10px] text-teks-2" />
+                Mengambang
+              </button>
             </div>
           </div>
 
@@ -268,24 +301,40 @@ export default function PanelSesi({
 
       {sesi && (
         <>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={tutupSesi}
-              disabled={loading}
-              className="rounded-full bg-gelap px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              onClick={() => setModeQR('modal')}
+              className="inline-flex items-center gap-2 rounded-full bg-aksen px-4 py-2.5 text-sm font-bold text-gelap shadow-sm hover:brightness-105 active:scale-95"
             >
-              Tutup Sesi
+              <FontAwesomeIcon icon={faTv} className="text-xs" />
+              Mode Proyektor (Perbesar QR)
+            </button>
+            <button
+              type="button"
+              onClick={() => setModeQR('mengambang')}
+              className="inline-flex items-center gap-1.5 rounded-full border border-garis bg-kartu px-4 py-2.5 text-sm font-semibold text-teks hover:bg-kanvas active:scale-95"
+            >
+              <FontAwesomeIcon icon={faUpRightAndDownLeftFromCenter} className="text-xs text-teks-2" />
+              QR Mengambang
             </button>
             <a
               href={`/api/qr?sessionId=${sesi.id}`}
-              className="rounded-full border border-garis px-4 py-2.5 text-sm font-semibold text-teks"
+              className="rounded-full border border-garis px-4 py-2.5 text-sm font-semibold text-teks hover:bg-kanvas"
               title="Token mentah untuk uji tanpa kamera"
               target="_blank"
               rel="noreferrer"
             >
               Lihat token
             </a>
+            <button
+              type="button"
+              onClick={tutupSesi}
+              disabled={loading}
+              className="rounded-full bg-gelap px-4 py-2.5 text-sm font-semibold text-white hover:bg-black/80 disabled:opacity-60"
+            >
+              Tutup Sesi
+            </button>
           </div>
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-garis">
@@ -351,6 +400,18 @@ export default function PanelSesi({
             </table>
           </div>
         </>
+      )}
+
+      {sesi && (
+        <ModalQRPembesar
+          mode={modeQR}
+          onTutup={() => setModeQR('normal')}
+          onUbahMode={(m) => setModeQR(m)}
+          token={token}
+          sisa={sisa}
+          sesi={sesi}
+          metrik={{ hadir: metrik.hadir, total: roster.length }}
+        />
       )}
     </section>
   )
