@@ -1,7 +1,10 @@
 import { connection } from 'next/server'
+import { cookies } from 'next/headers'
+import Link from 'next/link'
 import PanelSesiSiswa from '@/components/PanelSesiSiswa'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { verifikasiSesiToken } from '@/lib/sesi-cookie'
 import { hariKeWIB, jamWIB } from '@/lib/format'
 import { hitungMetrik } from '@/lib/rekap'
 
@@ -28,62 +31,72 @@ const LABEL: Record<string, string> = {
 export default async function DashboardSiswa() {
   await connection()
 
-  const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const jar = await cookies()
+  const sesiToken = verifikasiSesiToken(jar.get('app_session')?.value)
+  const admin = createAdminClient()
 
-  const { data: profil } = user
-    ? await supabase
+  let userId = sesiToken?.id
+  if (!userId) {
+    const supabase = await createServerSupabase()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    userId = user?.id
+  }
+
+  const { data: profil } = userId
+    ? await admin
         .from('users')
         .select('id, full_name, identifier, class_id')
-        .eq('id', user.id)
+        .eq('id', userId)
         .maybeSingle()
     : { data: null }
 
   if (!profil) {
     return (
-      <p className="rounded-2xl bg-kartu p-6 text-sm text-teks-2 shadow-bento">
-        Profil siswa tidak ditemukan. Keluar lalu masuk kembali.
-      </p>
+      <div className="rounded-2xl bg-kartu p-6 text-center text-sm text-teks-2 shadow-bento">
+        <p className="font-semibold text-teks-1">Profil siswa tidak ditemukan</p>
+        <p className="mt-1 text-xs">Sesi masuk tidak terdeteksi. Silakan kembali ke halaman masuk.</p>
+        <Link href="/" className="mt-4 inline-block rounded-xl bg-aksen px-4 py-2 text-xs font-bold text-gelap">
+          Halaman Masuk
+        </Link>
+      </div>
     )
   }
 
-  const [{ data: sesiRaw }, { data: logSaya }, { data: jadwalRaw }] = await Promise.all([
-    profil.class_id
-      ? supabase
-          .from('sessions')
-          .select('id, subject_id, teacher_id, started_at')
-          .eq('class_id', profil.class_id)
-          .eq('status', 'ACTIVE')
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-    supabase
-      .from('attendance_logs')
-      .select('id, session_id, status, scanned_at')
-      .eq('student_id', profil.id)
-      .order('scanned_at', { ascending: false }),
-    profil.class_id
-      ? supabase
-          .from('schedules')
-          .select('subject_id, jam_ke, jam_mulai, jam_selesai')
-          .eq('class_id', profil.class_id)
-          .eq('day_of_week', hariKeWIB())
-          .order('jam_ke')
-      : Promise.resolve({ data: [] }),
-  ])
+  const [{ data: sesiRaw }, { data: logSaya }, { data: jadwalRaw }, { data: semuaMapel }] =
+    await Promise.all([
+      profil.class_id
+        ? admin
+            .from('sessions')
+            .select('id, subject_id, teacher_id, started_at')
+            .eq('class_id', profil.class_id)
+            .eq('status', 'ACTIVE')
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      admin
+        .from('attendance_logs')
+        .select('id, session_id, status, scanned_at')
+        .eq('student_id', profil.id)
+        .order('scanned_at', { ascending: false }),
+      profil.class_id
+        ? admin
+            .from('schedules')
+            .select('subject_id, jam_ke, jam_mulai, jam_selesai')
+            .eq('class_id', profil.class_id)
+            .eq('day_of_week', hariKeWIB())
+            .order('jam_ke')
+        : Promise.resolve({ data: [] }),
+      admin.from('teacher_subjects').select('id, subject_name'),
+    ])
 
   const daftarLog = logSaya ?? []
   const metrik = hitungMetrik(daftarLog)
 
-  // Nama mapel dibutuhkan untuk sesi aktif, jadwal, dan riwayat.
-  const { data: semuaMapel } = await supabase.from('teacher_subjects').select('id, subject_name')
   const namaMapel = new Map((semuaMapel ?? []).map((m) => [m.id, m.subject_name]))
 
   let sesi: { id: string; mapel: string; guru: string; mulai: string } | null = null
   if (sesiRaw) {
-    // Nama guru tidak terbaca lewat RLS siswa (users_baca hanya baris sendiri) → baca di server.
-    const admin = createAdminClient()
     const { data: guru } = await admin
       .from('users')
       .select('full_name')
@@ -101,9 +114,9 @@ export default async function DashboardSiswa() {
   const riwayat = daftarLog.slice(0, 5)
   const idSesiRiwayat = [...new Set(riwayat.map((r) => r.session_id))]
   const { data: sesiRiwayat } = idSesiRiwayat.length
-    ? await supabase.from('sessions').select('id, subject_id').in('id', idSesiRiwayat)
+    ? await admin.from('sessions').select('id, subject_id').in('id', idSesiRiwayat)
     : { data: [] }
-  const mapelRiwayat = new Map((sesiRiwayat ?? []).map((s) => [s.id, s.subject_id]))
+  const mapelRiwayat = new Map((sesiRiwayat ?? []).map((s: { id: string; subject_id: string }) => [s.id, s.subject_id]))
 
   const logSesiAktif = sesiRaw ? daftarLog.find((l) => l.session_id === sesiRaw.id) : null
   const sudahAbsen = Boolean(logSesiAktif)

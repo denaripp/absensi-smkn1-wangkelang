@@ -1,37 +1,65 @@
 import { Suspense } from 'react'
 import { connection } from 'next/server'
-import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
+import Link from 'next/link'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { verifikasiSesiToken } from '@/lib/sesi-cookie'
 import ShellSiswa from '@/components/ShellSiswa'
 
 // Isi layout dipisah ke komponen async dan dibungkus <Suspense>.
-// Tanpa boundary ini, `cacheComponents` mencoba memprerender layout (yang membaca
-// cookie lewat Supabase Auth, dan auth-js memanggil Date.now()) lalu build/dev
-// gagal: 'Route "/siswa": unstable value Date.now() while prerendering'.
-// Pola sama dipakai di (guru)/layout.tsx.
+// Membaca fast-session cookie `app_session` agar tidak perlu roundtrip berulang ke Tokyo.
 async function IsiSiswa({ children }: { children: React.ReactNode }) {
-  await connection() // wajib: tandai layout ini request-time sebelum auth-js memanggil Date.now()
-  const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  await connection() // wajib: tandai layout ini request-time
 
-  if (!user) redirect('/')
+  const jar = await cookies()
+  const tokenSesi = jar.get('app_session')?.value
+  const sesi = verifikasiSesiToken(tokenSesi)
 
-  const { data: profil } = await supabase
+  const admin = createAdminClient()
+  let userId = sesi?.id
+
+  if (!userId) {
+    const supabase = await createServerSupabase()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    userId = user?.id
+  }
+
+  if (!userId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-kanvas p-4 md:p-8">
+        <div className="w-full max-w-md rounded-2xl bg-kartu p-6 text-center shadow-bento">
+          <h2 className="text-base font-bold text-teks-1">Sesi Belum Aktif atau Telah Berakhir</h2>
+          <p className="mt-2 text-xs text-teks-2">
+            Silakan masuk kembali untuk mengakses portal presensi siswa.
+          </p>
+          <Link
+            href="/"
+            className="mt-4 inline-block rounded-xl bg-aksen px-5 py-2.5 text-xs font-bold text-gelap hover:brightness-105"
+          >
+            Menuju Halaman Masuk
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const { data: profil } = await admin
     .from('users')
     .select('full_name, identifier, class_id, device_lock_id')
-    .eq('id', user.id)
+    .eq('id', userId)
     .maybeSingle()
 
   const { data: kelas } = profil?.class_id
-    ? await supabase.from('classes').select('class_name').eq('id', profil.class_id).maybeSingle()
+    ? await admin.from('classes').select('class_name').eq('id', profil.class_id).maybeSingle()
     : { data: null }
 
   return (
     <ShellSiswa
-      nama={profil?.full_name ?? 'Siswa'}
-      nisn={profil?.identifier ?? '-'}
+      nama={profil?.full_name ?? sesi?.nama ?? 'Siswa'}
+      nisn={profil?.identifier ?? sesi?.nip ?? '-'}
       kelas={kelas?.class_name ?? '-'}
       terkunci={Boolean(profil?.device_lock_id)}
     >
