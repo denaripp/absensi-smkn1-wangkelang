@@ -105,9 +105,18 @@ export default async function DashboardSiswa() {
     : { data: [] }
   const mapelRiwayat = new Map((sesiRiwayat ?? []).map((s) => [s.id, s.subject_id]))
 
+  const logSesiAktif = sesiRaw ? daftarLog.find((l) => l.session_id === sesiRaw.id) : null
+  const sudahAbsen = Boolean(logSesiAktif)
+  const statusAbsen = logSesiAktif ? (LABEL[logSesiAktif.status] ?? logSesiAktif.status) : null
+
   return (
     <div className="space-y-3 md:space-y-4">
-      <PanelSesiSiswa classId={profil.class_id} sesi={sesi} />
+      <PanelSesiSiswa
+        classId={profil.class_id}
+        sesi={sesi}
+        sudahAbsen={sudahAbsen}
+        statusAbsen={statusAbsen}
+      />
 
       <section>
         <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-teks-2">
