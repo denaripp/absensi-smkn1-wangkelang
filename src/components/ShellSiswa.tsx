@@ -53,9 +53,9 @@ export default function ShellSiswa({
             <button
               type="button"
               onClick={keluar}
-              title="Keluar"
-              aria-label="Keluar"
-              className="grid size-9 place-items-center rounded-full border border-garis text-teks-2"
+              title="Keluar dari Akun"
+              aria-label="Keluar dari Akun"
+              className="grid size-9 place-items-center rounded-full border border-garis text-teks-2 transition hover:bg-kanvas hover:text-teks-1"
             >
               <FontAwesomeIcon icon={faRightFromBracket} />
             </button>
@@ -68,12 +68,12 @@ export default function ShellSiswa({
               }`}
               title={
                 terkunci
-                  ? 'HP ini terikat ke akunmu. Login dari HP lain akan ditolak.'
-                  : 'Kunci perangkat dibuat saat login pertama.'
+                  ? 'Perangkat HP ini telah terhubung ke akun Anda. Login dari perangkat lain akan ditolak demi keamanan.'
+                  : 'Perangkat akan otomatis terdaftar saat login pertama.'
               }
             >
               <FontAwesomeIcon icon={faLock} className="text-[10px]" />
-              {terkunci ? 'Perangkat Terkunci (HP Ini)' : 'Perangkat belum terkunci'}
+              {terkunci ? 'HP Terdaftar & Terkunci' : 'Perangkat Belum Terdaftar'}
             </span>
           </div>
         </header>

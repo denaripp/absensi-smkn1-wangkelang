@@ -37,11 +37,11 @@ export default function PanelKelas({ kelasList }: { kelasList: Kelas[] }) {
   }
 
   async function hapus(id: string) {
-    if (!window.confirm('Hapus kelas ini?')) return
+    if (!window.confirm('Apakah Anda yakin ingin menghapus kelas ini? Kelas yang masih memiliki data siswa tidak dapat dihapus.')) return
     const res = await fetch(`/api/kelas/${id}`, { method: 'DELETE' })
     const data = (await res.json()) as { error?: string }
     if (!res.ok) {
-      setPesan(data.error ?? 'gagal menghapus')
+      setPesan(data.error ?? 'Gagal menghapus data kelas.')
       return
     }
     router.refresh()

@@ -29,13 +29,13 @@ export default function FormDaftarGuru() {
       const data = (await res.json()) as { error?: string }
 
       if (!res.ok) {
-        setPesan(data.error ?? 'gagal mendaftar')
+        setPesan(data.error ?? 'Pendaftaran akun guru belum berhasil. Periksa kembali data Anda.')
         return
       }
       setSukses(true)
       setForm(AWAL)
     } catch {
-      setPesan('tidak bisa menghubungi server')
+      setPesan('Gagal terhubung ke server. Periksa koneksi internet Anda.')
     } finally {
       setLoading(false)
     }
@@ -45,13 +45,13 @@ export default function FormDaftarGuru() {
     return (
       <div className="space-y-4 text-sm">
         <p className="rounded-xl bg-[#ECFCCB] px-4 py-3 font-semibold text-[#111827]">
-          Akun guru dibuat. Masuk dengan NIP dan password yang tadi kamu isi, lalu ganti sandi.
+          Pendaftaran akun guru berhasil. Silakan masuk menggunakan NIP dan kata sandi yang telah Anda daftarkan, kemudian perbarui kata sandi Anda.
         </p>
         <Link
           href="/"
           className="block rounded-full bg-[#8CE827] px-4 py-3 text-center font-bold text-[#0F172A] hover:bg-[#7BE11D]"
         >
-          Ke halaman masuk
+          Menuju Halaman Login
         </Link>
       </div>
     )

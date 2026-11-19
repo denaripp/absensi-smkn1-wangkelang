@@ -34,7 +34,7 @@ export default function FormMasuk() {
       const data = (await res.json()) as { error?: string; role?: Peran; mustChangePassword?: boolean }
 
       if (!res.ok) {
-        setPesan(data.error ?? 'gagal masuk')
+        setPesan(data.error ?? 'Gagal masuk. Periksa kembali nomor identitas dan kata sandi Anda.')
         return
       }
 
@@ -42,7 +42,7 @@ export default function FormMasuk() {
       router.replace(tujuan)
       router.refresh()
     } catch {
-      setPesan('tidak bisa menghubungi server')
+      setPesan('Gagal terhubung ke server. Periksa koneksi internet Anda.')
     } finally {
       setLoading(false)
     }
@@ -67,7 +67,7 @@ export default function FormMasuk() {
 
       <label className="block">
         <span className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
-          {peran === 'SISWA' ? 'NISN' : 'NIP'}
+          {peran === 'SISWA' ? 'Nomor Induk Siswa Nasional (NISN)' : 'Nomor Induk Pegawai (NIP)'}
         </span>
         <input
           value={identifier}
@@ -76,12 +76,12 @@ export default function FormMasuk() {
           autoComplete="username"
           inputMode="numeric"
           className="mt-1 w-full rounded-xl border border-[#EAECF0] px-4 py-3 text-[#111827] outline-none focus:border-[#8CE827]"
-          placeholder={peran === 'SISWA' ? '0061234501' : '198705122010011004'}
+          placeholder={peran === 'SISWA' ? 'Masukkan NISN (contoh: 0061234501)' : 'Masukkan NIP (contoh: 198705122010011004)'}
         />
       </label>
 
       <label className="block">
-        <span className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">Password</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">Kata Sandi</span>
         <input
           type="password"
           value={password}
@@ -104,12 +104,12 @@ export default function FormMasuk() {
         disabled={loading}
         className="w-full rounded-full bg-[#8CE827] px-4 py-3 font-bold text-[#0F172A] transition hover:bg-[#7BE11D] disabled:opacity-60"
       >
-        {loading ? 'Memproses…' : 'Masuk'}
+        {loading ? 'Memverifikasi…' : 'Masuk ke Sistem'}
       </button>
 
       {peran === 'SISWA' && (
         <p className="text-center text-xs text-[#6B7280]">
-          HP ini akan dikunci ke akunmu setelah login pertama.
+          Perangkat HP ini akan otomatis tertaut ke akun Anda pada login pertama.
         </p>
       )}
     </form>

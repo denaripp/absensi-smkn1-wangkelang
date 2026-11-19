@@ -122,15 +122,15 @@ export default function PanelMurid({
       body: JSON.stringify({ studentId: id }),
     })
     const data = (await res.json()) as { error?: string }
-    setPesan(res.ok ? `Kunci HP ${namaSiswa} direset.` : (data.error ?? 'gagal reset'))
+    setPesan(res.ok ? `Kunci perangkat HP ${namaSiswa} berhasil direset.` : (data.error ?? 'Gagal mereset kunci HP'))
     if (res.ok) router.refresh()
   }
 
   async function hapus(id: string, namaSiswa: string) {
-    if (!window.confirm(`Hapus ${namaSiswa}? Akun, absensi, dan auditnya ikut terhapus.`)) return
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus data ${namaSiswa}? Seluruh riwayat presensi siswa ini akan dihapus permanen.`)) return
     const res = await fetch(`/api/siswa/${id}`, { method: 'DELETE' })
     const data = (await res.json()) as { error?: string }
-    setPesan(res.ok ? `${namaSiswa} dihapus.` : (data.error ?? 'gagal menghapus'))
+    setPesan(res.ok ? `Data ${namaSiswa} berhasil dihapus.` : (data.error ?? 'Gagal menghapus data siswa'))
     if (res.ok) router.refresh()
   }
 
@@ -252,7 +252,7 @@ export default function PanelMurid({
         </form>
 
         {kelasList.length === 0 && (
-          <p className="mt-2 text-xs text-izin">Kamu belum mengampu kelas mana pun. Tambah jadwal/mapel dulu.</p>
+          <p className="mt-2 text-xs text-izin">Anda belum mengampu kelas mana pun. Silakan tambahkan jadwal atau mata pelajaran terlebih dahulu.</p>
         )}
         {pesan && <p className="mt-2 text-xs text-teks">{pesan}</p>}
       </section>

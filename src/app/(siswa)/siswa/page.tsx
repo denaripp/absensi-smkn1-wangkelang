@@ -56,10 +56,10 @@ export default async function DashboardSiswa() {
   if (!profil) {
     return (
       <div className="rounded-2xl bg-kartu p-6 text-center text-sm text-teks-2 shadow-bento">
-        <p className="font-semibold text-teks-1">Profil siswa tidak ditemukan</p>
-        <p className="mt-1 text-xs">Sesi masuk tidak terdeteksi. Silakan kembali ke halaman masuk.</p>
+        <p className="font-semibold text-teks-1">Profil Siswa Tidak Ditemukan</p>
+        <p className="mt-1 text-xs">Sesi masuk telah berakhir atau tidak terdeteksi. Silakan masuk kembali.</p>
         <Link href="/" className="mt-4 inline-block rounded-xl bg-aksen px-4 py-2 text-xs font-bold text-gelap">
-          Halaman Masuk
+          Halaman Login
         </Link>
       </div>
     )
@@ -166,14 +166,14 @@ export default async function DashboardSiswa() {
 
       <section>
         <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-teks-2">
-          Metrik Kehadiranmu
+          Ringkasan Kehadiran
         </h2>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'Hadir', nilai: metrik.hadir, ket: `${metrik.persen}% kerajinan`, warna: 'text-hadir', bg: 'bg-[#DCFCE7]' },
-            { label: 'Sakit', nilai: metrik.sakit, ket: 'surat dokter', warna: 'text-sakit', bg: 'bg-[#F3E8FF]' },
-            { label: 'Izin', nilai: metrik.izin, ket: 'keperluan keluarga', warna: 'text-izin', bg: 'bg-[#FEF3C7]' },
-            { label: 'Alpa', nilai: metrik.alpa, ket: 'tanpa keterangan', warna: 'text-alpa', bg: 'bg-[#FEE2E2]' },
+            { label: 'Hadir', nilai: metrik.hadir, ket: `${metrik.persen}% tingkat kehadiran`, warna: 'text-hadir', bg: 'bg-[#DCFCE7]' },
+            { label: 'Sakit', nilai: metrik.sakit, ket: 'Surat keterangan', warna: 'text-sakit', bg: 'bg-[#F3E8FF]' },
+            { label: 'Izin', nilai: metrik.izin, ket: 'Izin tercatat', warna: 'text-izin', bg: 'bg-[#FEF3C7]' },
+            { label: 'Alpa', nilai: metrik.alpa, ket: 'Tanpa keterangan', warna: 'text-alpa', bg: 'bg-[#FEE2E2]' },
           ].map((m) => (
             <div key={m.label} className="rounded-2xl bg-kartu p-4 shadow-bento">
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${m.bg} ${m.warna}`}>
@@ -189,13 +189,13 @@ export default async function DashboardSiswa() {
       <DaftarKehadiranMapelSiswa daftarMapel={rekapMapel} />
 
       <section className="rounded-2xl bg-kartu p-5 shadow-bento">
-        <h2 className="text-base font-semibold">Jadwal Hari Ini</h2>
+        <h2 className="text-base font-semibold">Jadwal Pelajaran Hari Ini</h2>
         <p className="text-xs text-teks-2">{NAMA_HARI[hariKeWIB() - 1] ?? 'Hari ini'}</p>
 
         <ul className="mt-3 space-y-2">
           {(jadwalRaw ?? []).length === 0 && (
             <li className="rounded-xl bg-kanvas px-4 py-3 text-sm text-teks-2">
-              Tidak ada jadwal pelajaran untuk kelasmu hari ini.
+              Tidak ada jadwal pelajaran untuk kelas Anda hari ini.
             </li>
           )}
           {(jadwalRaw ?? []).map((j) => (
@@ -207,8 +207,8 @@ export default async function DashboardSiswa() {
                 {namaMapel.get(j.subject_id) ?? 'Mata pelajaran'}
               </span>
               <span className="tabular text-xs text-teks-2">
-                {String(j.jam_mulai).slice(0, 5)}–{String(j.jam_selesai).slice(0, 5)}
-                {' · jam ke-'}
+                {String(j.jam_mulai).slice(0, 5)}–{String(j.jam_selesai).slice(0, 5)} WIB
+                {' · Jam ke-'}
                 {j.jam_ke}
               </span>
             </li>
@@ -217,11 +217,11 @@ export default async function DashboardSiswa() {
       </section>
 
       <section className="rounded-2xl bg-kartu p-5 shadow-bento">
-        <h2 className="text-base font-semibold">Riwayat Presensi Terakhir</h2>
+        <h2 className="text-base font-semibold">Riwayat Presensi Terbaru</h2>
 
         <ul className="mt-3 divide-y divide-garis">
           {riwayat.length === 0 && (
-            <li className="py-3 text-sm text-teks-2">Belum ada riwayat presensi.</li>
+            <li className="py-3 text-sm text-teks-2">Belum ada riwayat presensi tercatat.</li>
           )}
           {riwayat.map((r) => (
             <li key={r.id} className="flex items-center justify-between gap-2 py-2.5">

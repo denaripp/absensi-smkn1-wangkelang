@@ -31,15 +31,15 @@ async function IsiSiswa({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-kanvas p-4 md:p-8">
         <div className="w-full max-w-md rounded-2xl bg-kartu p-6 text-center shadow-bento">
-          <h2 className="text-base font-bold text-teks-1">Sesi Belum Aktif atau Telah Berakhir</h2>
+          <h2 className="text-base font-bold text-teks-1">Sesi Masuk Telah Berakhir</h2>
           <p className="mt-2 text-xs text-teks-2">
-            Silakan masuk kembali untuk mengakses portal presensi siswa.
+            Silakan login kembali untuk mengakses portal presensi siswa.
           </p>
           <Link
             href="/"
             className="mt-4 inline-block rounded-xl bg-aksen px-5 py-2.5 text-xs font-bold text-gelap hover:brightness-105"
           >
-            Menuju Halaman Masuk
+            Kembali ke Halaman Login
           </Link>
         </div>
       </div>

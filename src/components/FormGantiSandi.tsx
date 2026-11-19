@@ -15,7 +15,7 @@ export default function FormGantiSandi() {
     setPesan(null)
 
     if (password !== ulangi) {
-      setPesan('kedua sandi belum sama')
+      setPesan('Kedua kata sandi belum cocok. Pastikan keduanya sama.')
       return
     }
 
@@ -29,13 +29,13 @@ export default function FormGantiSandi() {
       const data = (await res.json()) as { error?: string }
 
       if (!res.ok) {
-        setPesan(data.error ?? 'gagal ganti sandi')
+        setPesan(data.error ?? 'Gagal memperbarui kata sandi.')
         return
       }
       router.replace('/')
       router.refresh()
     } catch {
-      setPesan('tidak bisa menghubungi server')
+      setPesan('Gagal terhubung ke server. Periksa koneksi internet Anda.')
     } finally {
       setLoading(false)
     }
@@ -44,7 +44,7 @@ export default function FormGantiSandi() {
   return (
     <form onSubmit={kirim} className="space-y-3">
       <label className="block">
-        <span className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">Sandi baru</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">Kata Sandi Baru</span>
         <input
           type="password"
           value={password}
@@ -53,11 +53,12 @@ export default function FormGantiSandi() {
           minLength={8}
           autoComplete="new-password"
           className="mt-1 w-full rounded-xl border border-[#EAECF0] px-4 py-3 text-[#111827] outline-none focus:border-[#8CE827]"
+          placeholder="Minimal 8 karakter"
         />
       </label>
 
       <label className="block">
-        <span className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">Ulangi sandi baru</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">Ulangi Kata Sandi Baru</span>
         <input
           type="password"
           value={ulangi}
@@ -66,6 +67,7 @@ export default function FormGantiSandi() {
           minLength={8}
           autoComplete="new-password"
           className="mt-1 w-full rounded-xl border border-[#EAECF0] px-4 py-3 text-[#111827] outline-none focus:border-[#8CE827]"
+          placeholder="Masukkan kembali kata sandi baru"
         />
       </label>
 
@@ -80,7 +82,7 @@ export default function FormGantiSandi() {
         disabled={loading}
         className="w-full rounded-full bg-[#8CE827] px-4 py-3 font-bold text-[#0F172A] transition hover:bg-[#7BE11D] disabled:opacity-60"
       >
-        {loading ? 'Menyimpan…' : 'Simpan sandi baru'}
+        {loading ? 'Menyimpan…' : 'Simpan Kata Sandi Baru'}
       </button>
 
       <button
@@ -90,9 +92,9 @@ export default function FormGantiSandi() {
           router.replace('/')
           router.refresh()
         }}
-        className="w-full rounded-full border border-[#EAECF0] px-4 py-3 text-sm font-semibold text-[#6B7280]"
+        className="w-full rounded-full border border-[#EAECF0] px-4 py-3 text-sm font-semibold text-[#6B7280] transition hover:bg-[#F4F5F7]"
       >
-        Keluar
+        Batalkan &amp; Keluar
       </button>
     </form>
   )

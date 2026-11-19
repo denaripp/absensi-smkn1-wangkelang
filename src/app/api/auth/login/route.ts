@@ -44,19 +44,19 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   // Pesan disamakan untuk identifier tidak ada vs password salah: jangan bocorkan NISN/NIP mana yang terdaftar.
-  if (!profil) return tolak('NISN/NIP atau password salah', 401)
-  if (!profil.is_active) return tolak('akun nonaktif, hubungi guru', 403)
-  if (profil.role !== role) return tolak('akun ini bukan akun ' + role, 403)
+  if (!profil) return tolak('NISN/NIP atau kata sandi tidak cocok', 401)
+  if (!profil.is_active) return tolak('Akun Anda tidak aktif. Silakan hubungi pihak sekolah.', 403)
+  if (profil.role !== role) return tolak('Akun ini tidak terdaftar sebagai ' + (role === 'GURU' ? 'Guru' : 'Siswa'), 403)
 
   const { data: authUser, error: galatAuth } = await admin.auth.admin.getUserById(profil.id)
   const email = authUser?.user?.email
-  if (galatAuth || !email) return tolak('akun auth tidak ditemukan', 500)
+  if (galatAuth || !email) return tolak('Akun autentikasi tidak ditemukan', 500)
 
   const supabase = await createServerSupabase()
 
   // Password diverifikasi lebih dulu supaya perangkat tidak bisa dikunci orang lain tanpa kredensial.
   const { error: galatMasuk } = await supabase.auth.signInWithPassword({ email, password })
-  if (galatMasuk) return tolak('NISN/NIP atau password salah', 401)
+  if (galatMasuk) return tolak('NISN/NIP atau kata sandi tidak cocok', 401)
 
   if (role === 'SISWA') {
     const deviceLockId = String(body.deviceLockId ?? '')
@@ -64,14 +64,14 @@ export async function POST(request: Request) {
 
     if (!POLA_UUID.test(deviceLockId) || !POLA_FINGERPRINT.test(fingerprint)) {
       await supabase.auth.signOut()
-      return tolak('identitas perangkat tidak terdeteksi, muat ulang halaman', 400)
+      return tolak('Identitas perangkat tidak terdeteksi. Silakan muat ulang halaman.', 400)
     }
 
     const device = await periksaDevice(admin, profil.id, deviceLockId, fingerprint)
 
     if (device.hasil === 'MISMATCH') {
       await supabase.auth.signOut()
-      return tolak('perangkat berbeda. Hubungi guru untuk reset kunci HP', 403)
+      return tolak('Perangkat HP tidak cocok dengan akun terdaftar. Hubungi guru untuk mereset kunci perangkat Anda.', 403)
     }
     if (device.hasil === 'TIDAK_ADA') {
       await supabase.auth.signOut()

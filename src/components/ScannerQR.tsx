@@ -28,15 +28,15 @@ export default function ScannerQR({ onTutup }: { onTutup: () => void }) {
         const data = (await res.json()) as { status?: string; jam?: string; error?: string }
 
         if (!res.ok) {
-          setPesan(data.error ?? 'gagal mencatat absensi')
+          setPesan(data.error ?? 'Gagal mencatat kehadiran. Silakan coba lagi.')
           sudahKirim.current = false
           return
         }
 
-        setSukses(`Hadir — ${data.jam} WIB`)
+        setSukses(`Presensi Berhasil — Pukul ${data.jam} WIB`)
         router.refresh()
       } catch {
-        setPesan('tidak bisa menghubungi server')
+        setPesan('Gagal terhubung ke server. Periksa koneksi internet Anda.')
         sudahKirim.current = false
       }
     }
@@ -70,7 +70,7 @@ export default function ScannerQR({ onTutup }: { onTutup: () => void }) {
       } catch (e) {
         const alasan = e instanceof Error ? e.message : String(e)
         setPesan(
-          `Kamera tidak bisa dibuka (${alasan}). Izinkan akses kamera, atau minta guru mengirim tautan token.`,
+          `Kamera tidak dapat diakses (${alasan}). Pastikan izin kamera telah diaktifkan di browser Anda.`,
         )
       }
     }
@@ -92,17 +92,17 @@ export default function ScannerQR({ onTutup }: { onTutup: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gelap/70 p-4">
       <div className="w-full max-w-md rounded-2xl bg-kartu p-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold">Scan QR Presensi</h2>
+          <h2 className="text-base font-bold text-teks-1">Pindai Kode QR Presensi</h2>
           <button
             type="button"
             onClick={onTutup}
-            className="rounded-full border border-garis px-3 py-1 text-xs font-semibold text-teks-2"
+            className="rounded-full border border-garis px-3 py-1 text-xs font-semibold text-teks-2 transition hover:bg-kanvas hover:text-teks-1"
           >
             Tutup
           </button>
         </div>
 
-        <p className="mt-1 text-xs text-teks-2">Arahkan kamera belakang ke QR di proyektor.</p>
+        <p className="mt-1 text-xs text-teks-2">Arahkan kamera ponsel ke kode QR di layar proyektor kelas.</p>
 
         <div className="relative mt-3 overflow-hidden rounded-2xl bg-black">
           <div id={ID_PEMBACA} className="min-h-[240px] w-full" />

@@ -75,11 +75,11 @@ export default function PanelMapel({
   }
 
   async function hapusMapel(id: string) {
-    if (!window.confirm('Hapus mata pelajaran ini?')) return
+    if (!window.confirm('Apakah Anda yakin ingin menghapus mata pelajaran ini?')) return
     const res = await fetch(`/api/mapel/${id}`, { method: 'DELETE' })
     const data = (await res.json()) as { error?: string }
     if (!res.ok) {
-      setPesanMapel(data.error ?? 'gagal menghapus')
+      setPesanMapel(data.error ?? 'Gagal menghapus mata pelajaran.')
       return
     }
     router.refresh()
@@ -114,11 +114,11 @@ export default function PanelMapel({
   }
 
   async function hapusJadwal(id: string) {
-    if (!window.confirm('Hapus jadwal pelajaran ini?')) return
+    if (!window.confirm('Apakah Anda yakin ingin menghapus jadwal pelajaran ini?')) return
     const res = await fetch(`/api/jadwal/${id}`, { method: 'DELETE' })
     const data = (await res.json()) as { error?: string }
     if (!res.ok) {
-      setPesanJadwal(data.error ?? 'gagal menghapus jadwal')
+      setPesanJadwal(data.error ?? 'Gagal menghapus jadwal pelajaran.')
       return
     }
     router.refresh()

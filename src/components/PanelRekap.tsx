@@ -90,13 +90,13 @@ export default function PanelRekap({
         onClick={(e) => {
           if (!siap) e.preventDefault()
         }}
-        className={`mt-4 inline-block rounded-full px-4 py-2.5 text-sm font-bold ${
-          siap ? 'bg-aksen text-gelap' : 'cursor-not-allowed bg-kanvas text-teks-2'
+        className={`mt-4 inline-block rounded-full px-4 py-2.5 text-sm font-bold transition ${
+          siap ? 'bg-aksen text-gelap hover:brightness-105' : 'cursor-not-allowed bg-kanvas text-teks-2'
         }`}
       >
-        Unduh Laporan Excel
+        Unduh Laporan Excel (.xlsx)
       </a>
-      {!siap && <p className="mt-1 text-xs text-teks-2">Isi kelas dan rentang tanggal dulu.</p>}
+      {!siap && <p className="mt-1 text-xs text-teks-2">Pilih kelas serta tentukan tanggal awal dan akhir untuk mengunduh laporan.</p>}
     </section>
   )
 }

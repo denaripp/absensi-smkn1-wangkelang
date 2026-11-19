@@ -16,7 +16,7 @@ export default async function HalamanMasuk() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-[#111827]">Absensi SMK Negeri 1 Wangkelang</h1>
-            <p className="text-xs text-[#6B7280]">Masuk sesuai peranmu</p>
+            <p className="text-xs text-[#6B7280]">Pilih peran Anda untuk masuk ke sistem</p>
           </div>
         </div>
 
@@ -25,9 +25,9 @@ export default async function HalamanMasuk() {
         </div>
 
         <p className="mt-4 text-center text-xs text-[#6B7280]">
-          Guru belum punya akun?{' '}
+          Guru belum memiliki akun?{' '}
           <Link className="font-semibold text-[#111827] underline" href="/register-guru">
-            Daftar dengan kode sekolah
+            Daftar menggunakan kode sekolah
           </Link>
         </p>
       </div>

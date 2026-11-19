@@ -11,21 +11,21 @@ function badgeEvaluasi(status: StatusEvaluasiPresensi) {
   switch (status) {
     case 'AMAN':
       return {
-        label: 'Aman',
+        label: 'Aman (≥80%)',
         icon: faCircleCheck,
         badgeCls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
         barCls: 'bg-emerald-600',
       }
     case 'PERINGATAN':
       return {
-        label: 'Peringatan (≥75%)',
+        label: 'Waspada (75%–79%)',
         icon: faTriangleExclamation,
         badgeCls: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300',
         barCls: 'bg-amber-500',
       }
     case 'KRITIS':
       return {
-        label: 'Batas Kritis (<75%)',
+        label: 'Kurang dari 75% (Kritis)',
         icon: faCircleXmark,
         badgeCls: 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300',
         barCls: 'bg-rose-600',
@@ -33,7 +33,7 @@ function badgeEvaluasi(status: StatusEvaluasiPresensi) {
     case 'BELUM_ADA_SESI':
     default:
       return {
-        label: 'Belum Ada Sesi',
+        label: 'Belum Ada Pertemuan',
         icon: faClock,
         badgeCls: 'bg-kanvas text-teks-2',
         barCls: 'bg-garis',
@@ -50,9 +50,9 @@ export default function DaftarKehadiranMapelSiswa({
     <section className="rounded-2xl bg-kartu p-5 shadow-bento">
       <div className="flex flex-wrap items-baseline justify-between gap-1">
         <div>
-          <h2 className="text-base font-bold text-teks-1">Presensi Per Mata Pelajaran</h2>
+          <h2 className="text-base font-bold text-teks-1">Kehadiran per Mata Pelajaran</h2>
           <p className="mt-0.5 text-xs text-teks-2">
-            Pantau tingkat kehadiran dan syarat kelayakan ujian semester (minimal 75%).
+            Pantau persentase kehadiran setiap mata pelajaran untuk memenuhi syarat ujian semester (minimal 75%).
           </p>
         </div>
         <span className="text-[11px] font-semibold text-teks-2">

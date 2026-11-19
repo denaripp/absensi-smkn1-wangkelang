@@ -169,8 +169,8 @@ export default function PanelSesi({
           {belumAdaData ? (
             <p className="rounded-xl bg-kanvas px-4 py-3 text-sm text-teks-2">
               {mapelList.length === 0
-                ? 'Belum ada mata pelajaran yang kamu ampu. Tambah lewat menu Mapel.'
-                : 'Belum ada kelas di sekolah. Tambah lewat menu Kelas.'}
+                ? 'Belum ada mata pelajaran yang Anda ampu. Silakan tambahkan melalui menu Mata Pelajaran.'
+                : 'Belum ada data kelas yang terdaftar. Silakan tambahkan melalui menu Kelas.'}
             </p>
           ) : (
             <>
