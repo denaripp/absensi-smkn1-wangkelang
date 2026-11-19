@@ -35,9 +35,14 @@ export default function Dock() {
       aria-label="Navigasi guru"
       className="sticky top-3 flex h-fit flex-col items-center gap-2 rounded-[28px] bg-kartu p-2 shadow-bento md:top-6"
     >
-      <div className="grid size-10 place-items-center rounded-2xl bg-aksen text-sm font-black text-gelap">
+      <Link
+        href="/guru"
+        title="Beranda SMK Negeri 1 Wangkelang"
+        aria-label="Beranda SMK Negeri 1 Wangkelang"
+        className="grid size-10 place-items-center rounded-2xl bg-aksen text-sm font-black text-gelap transition hover:bg-aksen-hover"
+      >
         SM
-      </div>
+      </Link>
 
       {MENU.map((item) => (
         <Link

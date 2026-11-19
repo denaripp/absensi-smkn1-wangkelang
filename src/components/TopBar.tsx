@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBell, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons'
+import PencarianGlobal from '@/components/PencarianGlobal'
+import MenuNotifikasi from '@/components/MenuNotifikasi'
+import MenuProfilGuru from '@/components/MenuProfilGuru'
 
 const MENU = [
   { href: '/guru', label: 'Dashboard' },
@@ -13,16 +14,15 @@ const MENU = [
   { href: '/guru/rekap', label: 'Rekap' },
 ]
 
-function inisial(nama: string) {
-  return nama
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((k) => k[0]?.toUpperCase() ?? '')
-    .join('')
-}
-
-export default function TopBar({ nama, nip, tanggal }: { nama: string; nip: string; tanggal: string }) {
+export default function TopBar({
+  nama,
+  nip,
+  tanggal,
+}: {
+  nama: string
+  nip: string
+  tanggal: string
+}) {
   const jalur = usePathname()
 
   return (
@@ -46,35 +46,10 @@ export default function TopBar({ nama, nip, tanggal }: { nama: string; nip: stri
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
-          <Link
-            href="/guru/murid"
-            className="hidden items-center gap-2 rounded-full border border-garis px-3 py-2 text-xs text-teks-2 transition hover:border-teks-2 sm:flex"
-            title="Buka data murid untuk pencarian"
-          >
-            <FontAwesomeIcon icon={faMagnifyingGlass} />
-            <span className="w-36 text-teks-2">Cari siswa atau kelas…</span>
-          </Link>
-
-          <span
-            className="relative grid size-9 place-items-center rounded-full border border-garis text-teks-2"
-            title="Sistem aktif, tidak ada peringatan sistem"
-          >
-            <FontAwesomeIcon icon={faBell} />
-            <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-aksen text-[10px] font-bold text-gelap">
-              1
-            </span>
-          </span>
-
-          <div className="flex items-center gap-2">
-            <span className="grid size-9 place-items-center rounded-full bg-gelap text-xs font-bold text-white">
-              {inisial(nama)}
-            </span>
-            <span className="hidden text-xs leading-tight md:block">
-              <span className="block font-semibold">{nama}</span>
-              <span className="block text-teks-2 tabular">{nip}</span>
-            </span>
-          </div>
+        <div className="ml-auto flex items-center gap-2.5">
+          <PencarianGlobal />
+          <MenuNotifikasi />
+          <MenuProfilGuru nama={nama} nip={nip} />
         </div>
       </div>
 
