@@ -2,11 +2,12 @@ import { connection } from 'next/server'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import PanelSesiSiswa from '@/components/PanelSesiSiswa'
+import DaftarKehadiranMapelSiswa from '@/components/DaftarKehadiranMapelSiswa'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { verifikasiSesiToken } from '@/lib/sesi-cookie'
 import { hariKeWIB, jamWIB } from '@/lib/format'
-import { hitungMetrik } from '@/lib/rekap'
+import { hitungMetrik, hitungKehadiranPerMapel } from '@/lib/rekap'
 
 export const instant = false
 
@@ -64,36 +65,68 @@ export default async function DashboardSiswa() {
     )
   }
 
-  const [{ data: sesiRaw }, { data: logSaya }, { data: jadwalRaw }, { data: semuaMapel }] =
-    await Promise.all([
-      profil.class_id
-        ? admin
-            .from('sessions')
-            .select('id, subject_id, teacher_id, started_at')
-            .eq('class_id', profil.class_id)
-            .eq('status', 'ACTIVE')
-            .maybeSingle()
-        : Promise.resolve({ data: null }),
-      admin
-        .from('attendance_logs')
-        .select('id, session_id, status, scanned_at')
-        .eq('student_id', profil.id)
-        .order('scanned_at', { ascending: false }),
-      profil.class_id
-        ? admin
-            .from('schedules')
-            .select('subject_id, jam_ke, jam_mulai, jam_selesai')
-            .eq('class_id', profil.class_id)
-            .eq('day_of_week', hariKeWIB())
-            .order('jam_ke')
-        : Promise.resolve({ data: [] }),
-      admin.from('teacher_subjects').select('id, subject_name'),
-    ])
+  const [
+    { data: sesiRaw },
+    { data: logSaya },
+    { data: jadwalRaw },
+    { data: semuaMapel },
+    { data: sesiKelasRaw },
+    { data: semuaGuru },
+    { data: jadwalKelasSemua },
+  ] = await Promise.all([
+    profil.class_id
+      ? admin
+          .from('sessions')
+          .select('id, subject_id, teacher_id, started_at')
+          .eq('class_id', profil.class_id)
+          .eq('status', 'ACTIVE')
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    admin
+      .from('attendance_logs')
+      .select('id, session_id, status, scanned_at')
+      .eq('student_id', profil.id)
+      .order('scanned_at', { ascending: false }),
+    profil.class_id
+      ? admin
+          .from('schedules')
+          .select('subject_id, jam_ke, jam_mulai, jam_selesai')
+          .eq('class_id', profil.class_id)
+          .eq('day_of_week', hariKeWIB())
+          .order('jam_ke')
+      : Promise.resolve({ data: [] }),
+    admin.from('teacher_subjects').select('id, subject_name, teacher_id'),
+    profil.class_id
+      ? admin
+          .from('sessions')
+          .select('id, subject_id, status')
+          .eq('class_id', profil.class_id)
+      : Promise.resolve({ data: [] }),
+    admin.from('users').select('id, full_name').eq('role', 'GURU'),
+    profil.class_id
+      ? admin.from('schedules').select('subject_id').eq('class_id', profil.class_id)
+      : Promise.resolve({ data: [] }),
+  ])
 
   const daftarLog = logSaya ?? []
   const metrik = hitungMetrik(daftarLog)
 
   const namaMapel = new Map((semuaMapel ?? []).map((m) => [m.id, m.subject_name]))
+  const guruMap = new Map((semuaGuru ?? []).map((g) => [g.id, g.full_name]))
+
+  const idMapelKelas = new Set([
+    ...(jadwalKelasSemua ?? []).map((j) => j.subject_id),
+    ...(sesiKelasRaw ?? []).map((s) => s.subject_id),
+  ])
+  const mapelKelasList = (semuaMapel ?? []).filter((m) => idMapelKelas.has(m.id))
+  const mapelDitampilkan = mapelKelasList.length ? mapelKelasList : (semuaMapel ?? [])
+
+  const rekapMapel = hitungKehadiranPerMapel({
+    mapelList: mapelDitampilkan,
+    sesiKelas: sesiKelasRaw ?? [],
+    logSiswa: daftarLog,
+    guruMap,
+  })
 
   let sesi: { id: string; mapel: string; guru: string; mulai: string } | null = null
   if (sesiRaw) {
@@ -152,6 +185,8 @@ export default async function DashboardSiswa() {
           ))}
         </div>
       </section>
+
+      <DaftarKehadiranMapelSiswa daftarMapel={rekapMapel} />
 
       <section className="rounded-2xl bg-kartu p-5 shadow-bento">
         <h2 className="text-base font-semibold">Jadwal Hari Ini</h2>
