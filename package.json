@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "tipe": "tsc --noEmit -p tsconfig.json",
-    "uji": "node --experimental-strip-types --test tests/*.test.ts"
+    "uji": "node --experimental-strip-types --test tests/*.test.ts",
+    "simulasi": "node --experimental-strip-types --env-file=.env.local scripts/simulasi-sesi.ts"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.3.1",
