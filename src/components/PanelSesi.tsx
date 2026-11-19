@@ -240,10 +240,10 @@ export default function PanelSesi({
               </div>
             </div>
             <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-teks-2">
-              Scan via HP Siswa
+              Pindai via HP Siswa
             </p>
-            <p className="text-[11px] text-teks-2">Token bergulir otomatis tiap 15 detik.</p>
-            <p className="tabular mt-1 text-sm font-bold">{String(sisa).padStart(2, '0')} detik</p>
+            <p className="text-[11px] text-teks-2">Kode berganti otomatis tiap 15 detik</p>
+            <p className="tabular mt-1 text-sm font-bold text-emerald-600">{String(sisa).padStart(2, '0')} detik</p>
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-garis">
               <div
                 className="h-full rounded-full bg-aksen transition-all duration-500"
