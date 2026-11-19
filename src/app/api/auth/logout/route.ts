@@ -8,11 +8,15 @@ async function keluar() {
 
 export async function POST() {
   await keluar()
-  return NextResponse.json({ ok: true })
+  const respons = NextResponse.json({ ok: true })
+  respons.cookies.set('app_session', '', { maxAge: 0, path: '/' })
+  return respons
 }
 
 // Dipakai proxy saat profil tidak ditemukan: redirect GET, bukan fetch.
 export async function GET(request: Request) {
   await keluar()
-  return NextResponse.redirect(new URL('/', request.url))
+  const respons = NextResponse.redirect(new URL('/', request.url))
+  respons.cookies.set('app_session', '', { maxAge: 0, path: '/' })
+  return respons
 }

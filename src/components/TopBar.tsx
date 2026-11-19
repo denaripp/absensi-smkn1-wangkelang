@@ -35,6 +35,7 @@ export default function TopBar({ nama, nip, tanggal }: { nama: string; nip: stri
               <Link
                 key={m.href}
                 href={m.href}
+                prefetch={true}
                 className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                   aktif ? 'bg-gelap text-white' : 'text-teks-2 hover:text-teks'
                 }`}

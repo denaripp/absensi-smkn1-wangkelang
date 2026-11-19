@@ -1,25 +1,32 @@
 import { connection } from 'next/server'
+import { cookies } from 'next/headers'
 import PanelMapel from '@/components/PanelMapel'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { verifikasiSesiToken } from '@/lib/sesi-cookie'
 
 export const instant = false
 
 export default async function HalamanMapel() {
   await connection()
 
+  const jar = await cookies()
+  const sesiCookie = verifikasiSesiToken(jar.get('app_session')?.value)
   const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+
+  let userId = sesiCookie?.id ?? ''
+  if (!userId) {
+    const { data: authData } = await supabase.auth.getUser()
+    userId = authData.user?.id ?? ''
+  }
 
   const [{ data: mapel }, { data: sesi }, { data: kelasRaw }, { data: jadwalRaw }] =
     await Promise.all([
       supabase
         .from('teacher_subjects')
         .select('id, subject_name')
-        .eq('teacher_id', user?.id ?? '')
+        .eq('teacher_id', userId)
         .order('subject_name'),
-      supabase.from('sessions').select('subject_id').eq('teacher_id', user?.id ?? ''),
+      supabase.from('sessions').select('subject_id').eq('teacher_id', userId),
       supabase.from('classes').select('id, class_name').order('class_name'),
       supabase
         .from('schedules')
@@ -60,7 +67,7 @@ export default async function HalamanMapel() {
   return (
     <div className="space-y-3">
       <header>
-        <h1 className="text-2xl font-black">Mapel & Jadwal Mengajar</h1>
+        <h1 className="text-2xl font-black">Mapel &amp; Jadwal Mengajar</h1>
         <p className="text-sm text-teks-2">
           Kelola mata pelajaran dan jadwal tatap muka kelas yang kamu ampu.
         </p>

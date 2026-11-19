@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { periksaDevice } from '@/lib/device'
 import { batasi, ipDari } from '@/lib/limit'
+import { buatSesiToken } from '@/lib/sesi-cookie'
 
 const POLA_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const POLA_FINGERPRINT = /^[0-9a-f]{64}$/i
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient()
   const { data: profil } = await admin
     .from('users')
-    .select('id, role, is_active, must_change_password')
+    .select('id, role, is_active, must_change_password, full_name, identifier')
     .eq('identifier', identifier)
     .maybeSingle()
 
@@ -78,9 +79,27 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({
+  const sesiToken = buatSesiToken({
+    id: profil.id,
+    role: profil.role,
+    mustChange: profil.must_change_password,
+    nama: profil.full_name,
+    nip: profil.identifier,
+  })
+
+  const respons = NextResponse.json({
     ok: true,
     role: profil.role,
     mustChangePassword: profil.must_change_password,
   })
+
+  respons.cookies.set('app_session', sesiToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60,
+  })
+
+  return respons
 }

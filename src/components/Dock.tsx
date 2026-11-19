@@ -43,6 +43,7 @@ export default function Dock() {
         <Link
           key={item.href}
           href={item.href}
+          prefetch={true}
           title={item.label}
           aria-label={item.label}
           aria-current={jalur === item.href ? 'page' : undefined}

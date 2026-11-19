@@ -1,4 +1,5 @@
 import { connection } from 'next/server'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import PanelSesi from '@/components/PanelSesi'
 import GrafikTren from '@/components/GrafikTren'
@@ -6,6 +7,7 @@ import KartuIdentitasGuru from '@/components/KartuIdentitasGuru'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { jamWIB, sapaanWIB, tanggalTujuhHariLaluWIB } from '@/lib/format'
 import { trenMingguan } from '@/lib/rekap'
+import { verifikasiSesiToken } from '@/lib/sesi-cookie'
 
 export const instant = false
 
@@ -14,14 +16,23 @@ type TitikHari = { tanggal: string; hadir: number; total: number }
 export default async function DashboardGuru() {
   await connection()
 
+  const jar = await cookies()
+  const sesiCookie = verifikasiSesiToken(jar.get('app_session')?.value)
   const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
 
-  const { data: profil } = user
-    ? await supabase.from('users').select('id, full_name, identifier').eq('id', user.id).single()
-    : { data: null }
+  let profil: { id: string; full_name: string; identifier: string } | null = null
+
+  if (sesiCookie && sesiCookie.role === 'GURU') {
+    profil = { id: sesiCookie.id, full_name: sesiCookie.nama, identifier: sesiCookie.nip }
+  } else {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    profil = user
+      ? (await supabase.from('users').select('id, full_name, identifier').eq('id', user.id).single()).data
+      : null
+  }
 
   if (!profil) {
     return (
@@ -31,7 +42,8 @@ export default async function DashboardGuru() {
     )
   }
 
-  const [{ data: mapelRaw }, { data: kelasRaw }, { data: sesiRaw }] = await Promise.all([
+  const awalMinggu = tanggalTujuhHariLaluWIB()
+  const [{ data: mapelRaw }, { data: kelasRaw }, { data: sesiRaw }, { data: sesiMinggu }] = await Promise.all([
     supabase.from('teacher_subjects').select('id, subject_name').eq('teacher_id', profil.id).order('subject_name'),
     supabase.from('classes').select('id, class_name, major').order('class_name'),
     supabase
@@ -40,6 +52,11 @@ export default async function DashboardGuru() {
       .eq('teacher_id', profil.id)
       .eq('status', 'ACTIVE')
       .maybeSingle(),
+    supabase
+      .from('sessions')
+      .select('id, session_date, class_id')
+      .eq('teacher_id', profil.id)
+      .gte('session_date', awalMinggu),
   ])
 
   const mapelList = (mapelRaw ?? []).map((m) => ({ id: m.id, nama: m.subject_name }))
@@ -68,13 +85,6 @@ export default async function DashboardGuru() {
     statusAwal = Object.fromEntries((logs ?? []).map((l) => [l.student_id, l.status]))
     sesi = { id: sesiRaw.id, mapel: namaMapel, kelas: namaKelas, mulai: jamWIB(sesiRaw.started_at) }
   }
-
-  const awalMinggu = tanggalTujuhHariLaluWIB()
-  const { data: sesiMinggu } = await supabase
-    .from('sessions')
-    .select('id, session_date, class_id')
-    .eq('teacher_id', profil.id)
-    .gte('session_date', awalMinggu)
 
   let tren: ReturnType<typeof trenMingguan> = []
   const daftarSesiMinggu = sesiMinggu ?? []

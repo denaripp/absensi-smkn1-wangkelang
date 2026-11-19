@@ -1,21 +1,40 @@
 import { connection } from 'next/server'
+import { cookies } from 'next/headers'
 import PanelMurid from '@/components/PanelMurid'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { kelasDiampu } from '@/lib/otoritas'
+import { verifikasiSesiToken } from '@/lib/sesi-cookie'
 
 export const instant = false
 
 export default async function HalamanMurid() {
   await connection()
 
-  const supabase = await createServerSupabase()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  const jar = await cookies()
+  const sesi = verifikasiSesiToken(jar.get('app_session')?.value)
   const admin = createAdminClient()
-  const idKelas = user ? await kelasDiampu(admin, user.id) : []
+
+  let userId = sesi?.id ?? ''
+  let supabase: Awaited<ReturnType<typeof createServerSupabase>> | null = null
+
+  if (!userId) {
+    supabase = await createServerSupabase()
+    const { data: authData } = await supabase.auth.getUser()
+    userId = authData.user?.id ?? ''
+  }
+
+  if (!userId) {
+    return (
+      <p className="rounded-2xl bg-kartu p-6 text-sm text-teks-2 shadow-bento">
+        Sesi login tidak valid. Silakan keluar dan masuk kembali.
+      </p>
+    )
+  }
+
+  supabase = supabase ?? (await createServerSupabase())
+
+  const idKelas = await kelasDiampu(admin, userId)
 
   const [{ data: kelas }, { data: siswa }] = await Promise.all([
     idKelas.length
